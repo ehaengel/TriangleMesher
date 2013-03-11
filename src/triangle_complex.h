@@ -33,6 +33,15 @@ public:
 	// Data management functions //
 	///////////////////////////////
 
+	unsigned int GetTriangleCount();
+	Triangle* GetTriangle(unsigned int tindex);
+
+	unsigned int GetVertexCount();
+	unsigned int GetVertexIndex(unsigned int vertex);
+	Vector2d* GetVertex(unsigned int vertex);
+
+	int SetVertexIndex(unsigned int vertex, unsigned int vindex);
+	int AppendVertexIndex(unsigned int vindex);
 
 	///////////////////////
 	// Meshing functions //
@@ -65,7 +74,7 @@ private:
 	int create_seed_triangle();
 	int compute_incomplete_vertices_and_edges();
 
-	int is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles);
+	int is_vertex_complete(unsigned int vertex, TriangleList adjacent_triangles);
 
 	//////////////////////
 	// Global mesh data //
@@ -78,7 +87,7 @@ private:
 	////////////////////////
 
 	//The overall mesh structure
-	vector<unsigned int> vertex_list;
+	vector<unsigned int>* vertex_list;
 	TriangleList* triangle_list;
 
 

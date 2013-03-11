@@ -7,7 +7,8 @@ TriangleComplex::TriangleComplex() {
 	global_vertex_list->push_back(NULL);
 
 	//Initialize all the other variables
-	vertex_list.clear();
+	vertex_list = new vector<unsigned int>;
+	vertex_list->clear();
 
 	triangle_list = new TriangleList;
 	triangle_list->clear();
@@ -18,7 +19,8 @@ TriangleComplex::TriangleComplex(VertexList* global_vertex_list) {
 	this->global_vertex_list = global_vertex_list;
 
 	//Initialize all the other variables
-	vertex_list.clear();
+	vertex_list = new vector<unsigned int>;
+	vertex_list->clear();
 
 	triangle_list = new TriangleList;
 	triangle_list->clear();
@@ -26,7 +28,8 @@ TriangleComplex::TriangleComplex(VertexList* global_vertex_list) {
 
 TriangleComplex::~TriangleComplex() {
 	//Delete the vertex list
-	vertex_list.clear();
+	vertex_list->clear();
+	delete vertex_list;
 
 	//Delete the triangle list
 	if(triangle_list) {
@@ -99,10 +102,54 @@ int TriangleComplex::WriteToFile(FILE* handle) {
 	return true;
 }
 
+//Data management functions
+unsigned int TriangleComplex::GetTriangleCount() {
+	return triangle_list->size();
+}
+
+Triangle* TriangleComplex::GetTriangle(unsigned int tindex) {
+	return (*triangle_list)[tindex];
+}
+
+unsigned int TriangleComplex::GetVertexCount() {
+	return vertex_list->size();
+}
+
+unsigned int TriangleComplex::GetVertexIndex(unsigned int vertex) {
+	//Safety check
+	if(vertex >= GetVertexCount())
+		return 0;
+
+	return (*vertex_list)[vertex];
+}
+
+Vector2d* TriangleComplex::GetVertex(unsigned int vertex) {
+	//Safety check
+	if(vertex >= GetVertexCount())
+		return NULL;
+
+	unsigned int vindex = GetVertexIndex(vertex);
+	return (*global_vertex_list)[vindex];
+}
+
+int TriangleComplex::SetVertexIndex(unsigned int vertex, unsigned int vindex) {
+	//Safety check
+	if(vertex >= GetVertexCount())
+		return false;
+
+	(*vertex_list)[vertex] = vindex;
+	return true;
+}
+
+int TriangleComplex::AppendVertexIndex(unsigned int vindex) {
+	vertex_list->push_back(vindex);
+
+	return true;
+}
 
 //Meshing functions
 int TriangleComplex::RunTriangleMesher() {
-	if(vertex_list.size() > MAXIMUM_MESH_SIZE) {
+	if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
 		//Split up mesh via kd-tree
 	}
 
@@ -174,7 +221,7 @@ int TriangleComplex::generate_random_vertex_list(int num, double xmin, double xm
 		new_vector->set(get_rand(xmin, xmax), get_rand(xmin, xmax));
 
 		global_vertex_list->push_back(new_vector);
-		vertex_list.push_back(i+1);
+		AppendVertexIndex(i+1);
 	}
 
 	return true;
@@ -182,16 +229,9 @@ int TriangleComplex::generate_random_vertex_list(int num, double xmin, double xm
 
 
 //Internal use functions
-Vector2d* TriangleComplex::get_vertex(unsigned int index) {
-	if(index > vertex_list.size())
-		return NULL;
-
-	return ((*global_vertex_list)[vertex_list[index]]);
-}
-
 int TriangleComplex::basic_triangle_mesher() {
 	//Safety test
-	if(vertex_list.size() < 4) {
+	if(GetVertexCount() < 4) {
 		printf("Error: Not enough vertices\n");
 		return false;
 	}
@@ -227,55 +267,55 @@ int TriangleComplex::basic_triangle_mesher() {
 
 int TriangleComplex::create_seed_triangle() {
 	//Safety check
-	if(vertex_list.size() < 4)
+	if(GetVertexCount() < 4)
 		return false;
 
 	if(triangle_list->size() == 0) {
 		//Sort all the vertices by how close they are to the center
 		Vector2d center(0.0, 0.0);
 
-		for(unsigned int i=0; i<vertex_list.size(); i++) {
-			Vector2d* v = get_vertex(i);
+		for(unsigned int i=0; i<GetVertexCount(); i++) {
+			Vector2d* v = GetVertex(i);
 
 			if(v != NULL)
-				center += ((*v) / double(vertex_list.size()));
+				center += ((*v) / double(GetVertexCount()));
 		}
 
 		//Quick-sort on vertex_list
-		for(unsigned int i=0; i<vertex_list.size(); i++) {
-			unsigned int center_closest_index = i;
+		for(unsigned int i=0; i<GetVertexCount(); i++) {
+			unsigned int center_closest_vertex = i;
 
-			for(unsigned int j=i+1; j<vertex_list.size(); j++) {
-				Vector2d* vc = get_vertex(center_closest_index);
-				Vector2d* vj = get_vertex(j);
+			for(unsigned int j=i+1; j<GetVertexCount(); j++) {
+				Vector2d* vc = GetVertex(center_closest_vertex);
+				Vector2d* vj = GetVertex(j);
 
 				if(vc == NULL)
-					center_closest_index = j;
+					center_closest_vertex = j;
 
 				else if(vj != NULL && vj->distance2(center) < vc->distance2(center))
-					center_closest_index = j;
+					center_closest_vertex = j;
 			}
 
-			unsigned int vbuf = vertex_list[i];
-			vertex_list[i] = vertex_list[center_closest_index];
-			vertex_list[center_closest_index] = vbuf;
+			unsigned int vindex = GetVertexIndex(i);
+			SetVertexIndex(i, GetVertexIndex(center_closest_vertex));
+			SetVertexIndex(center_closest_vertex, vindex);
 		}
 
 		//Safety check
-		if(vertex_list[0] == 0 || vertex_list[1] == 0)
+		if(GetVertexIndex(0) == 0 || GetVertexIndex(1) == 0)
 			return false;
 
 
 		//Create a triangle
 		Triangle* tri = new Triangle(global_vertex_list);
 
-		tri->SetVertex(0, vertex_list[0]);
-		tri->SetVertex(1, vertex_list[1]);
+		tri->SetVertex(0, GetVertexIndex(0));
+		tri->SetVertex(1, GetVertexIndex(1));
 
 		//Try to complete the triangle
-		for(unsigned int i=2; i<vertex_list.size(); i++) {
+		for(unsigned int i=2; i<GetVertexCount(); i++) {
 			//Try to add a new vertex
-			tri->SetVertex(2, vertex_list[i]);
+			tri->SetVertex(2, GetVertexIndex(i));
 
 			//If the triangle is degenerate reset the vertex to the null vertex
 			if(tri->OrientVertices() == false)
@@ -284,11 +324,12 @@ int TriangleComplex::create_seed_triangle() {
 			//Make sure that none of the other vertices are inside this triangle
 			else {
 				int found_point_inside = false;
-				for(unsigned int j=2; j<vertex_list.size(); j++) {
+				for(unsigned int j=2; j<GetVertexCount(); j++) {
 					if(j == i)
 						continue;
 
-					if(tri->TestPointInside(*get_vertex(j), false) == true) {
+					Vector2d* pt = GetVertex(j);
+					if(pt != NULL && tri->TestPointInside(*pt, false) == true) {
 						found_point_inside = true;
 						break;
 					}
@@ -320,7 +361,7 @@ int TriangleComplex::create_seed_triangle() {
 
 int TriangleComplex::compute_incomplete_vertices_and_edges() {
 	//Safety checking
-	if(vertex_list.size() < 4)
+	if(GetVertexCount() < 4)
 		return false;
 
 	//Clear the lists
@@ -328,18 +369,19 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 	incomplete_vertices_adjacent_triangles.clear();
 	incomplete_edges.clear();
 
-
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+	}
 
 	return true;
 }
 
-int TriangleComplex::is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles) {
+int TriangleComplex::is_vertex_complete(unsigned int vertex, TriangleList adjacent_triangles) {
 	//This function assumes that all the triangles are oriented ccw, and
 	//basically checks to see if the verticex is completely surrounded by triangles
 
 	//Safety check for the null vertex
 	// + returning true means the algorithm will overlook this vertex from now on
-	if(vertex_list[vindex] == 0)
+	if(GetVertexIndex(vertex) == 0)
 		return true;
 
 	//A vertex needs to be surrounded by at least three triangles to be complete
@@ -347,6 +389,7 @@ int TriangleComplex::is_vertex_complete(unsigned int vindex, TriangleList adjace
 		return false;
 
 	//Try to form a cycle of edges around the vertex
+	unsigned int vindex = GetVertexIndex(vertex);
 	for(unsigned int i=0; i<adjacent_triangles.size(); i++) {
 		unsigned int next_vertex = adjacent_triangles[i]->GetNextVertex(vindex);
 

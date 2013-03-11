@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
 
 	if(triangle_complex->RunTriangleMesher() == false) {
 		printf("Error occured\n");
-		return 1;
+		//return 1;
 	}
 
 	triangle_complex->write_svg("out.svg", 300.0, 300.0);
