@@ -10,6 +10,9 @@ using namespace std;
 #ifndef TRIANGLE
 #define TRIANGLE
 
+//Prototype this class
+class TriangleEdge;
+
 class Triangle {
 public:
 	Triangle(VertexList* global_vertex_list);
@@ -71,5 +74,26 @@ private:
 };
 
 typedef vector<Triangle*> TriangleList;
+
+class TriangleEdge {
+public:
+	TriangleEdge();
+	TriangleEdge(unsigned int tindex, int opposing_vertex);
+	~TriangleEdge();
+
+	int operator<(TriangleEdge te);
+	int operator==(TriangleEdge te);
+
+	TriangleEdge operator=(TriangleEdge te);
+
+	int GetVertices(Triangle* tri);
+
+	//The definition of the edge
+	unsigned int tindex;
+	int opposing_vertex;
+
+	//The vertices of the edge in question
+	unsigned int vertices[2];
+};
 
 #endif

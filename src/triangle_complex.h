@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <map>
 #include <vector>
+#include <algorithm>
 using namespace std;
 
 #include "utility.h"
@@ -65,6 +65,9 @@ private:
 	// Internal use functions //
 	////////////////////////////
 
+	int initialize();
+	int free_data();
+
 	//Get a vertex referenced by the internal vertex list
 	Vector2d* get_vertex(unsigned int index);
 
@@ -74,7 +77,7 @@ private:
 	int create_seed_triangle();
 	int compute_incomplete_vertices_and_edges();
 
-	int is_vertex_complete(unsigned int vertex, TriangleList adjacent_triangles);
+	int is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles);
 
 	//////////////////////
 	// Global mesh data //
@@ -90,12 +93,11 @@ private:
 	vector<unsigned int>* vertex_list;
 	TriangleList* triangle_list;
 
-
 	//These are used for constructing a mesh
 	vector<unsigned int> incomplete_vertices;
 	vector<TriangleList> incomplete_vertices_adjacent_triangles;
 
-	map<unsigned int, int> incomplete_edges;
+	vector<TriangleEdge> incomplete_edges;
 };
 
 #endif

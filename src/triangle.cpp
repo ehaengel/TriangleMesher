@@ -87,6 +87,7 @@ unsigned int Triangle::GetNextVertex(unsigned int vindex) {
 	//If vindex is not found return the null vertex
 	return 0;
 }
+
 unsigned int Triangle::GetPrevVertex(unsigned int vindex) {
 	//This function looks through vertices to find vindex and then
 	//returns the next vertex in vertices that comes before it
@@ -239,4 +240,72 @@ int Triangle::write_svg(FILE* handle) {
 }
 
 
-//Internal use functions
+
+TriangleEdge::TriangleEdge() {
+	tindex = 0;
+	opposing_vertex = 0;
+
+	vertices[0] = 0;
+	vertices[1] = 0;
+}
+
+TriangleEdge::TriangleEdge(unsigned int tindex, int opposing_vertex) {
+	this->tindex = tindex;
+	this->opposing_vertex = opposing_vertex;
+
+	vertices[0] = 0;
+	vertices[1] = 0;
+}
+
+TriangleEdge::~TriangleEdge() {
+	//Do nothing
+}
+
+int TriangleEdge::operator<(TriangleEdge te) {
+	if(tindex < te.tindex)
+		return true;
+
+	return false;
+}
+
+int TriangleEdge::operator==(TriangleEdge te) {
+	if(vertices[0] == te.vertices[0] && vertices[1] == te.vertices[1])
+		return true;
+
+	if(vertices[0] == te.vertices[1] && vertices[1] == te.vertices[0])
+		return true;
+
+	return false;
+}
+
+TriangleEdge TriangleEdge::operator=(TriangleEdge te) {
+	tindex = te.tindex;
+	opposing_vertex = te.opposing_vertex;
+
+	vertices[0] = te.vertices[0];
+	vertices[1] = te.vertices[1];
+
+	return (*this);
+}
+
+int TriangleEdge::GetVertices(Triangle* tri) {
+	//Get the edge opposite vertex 0
+	if(opposing_vertex == 0) {
+		vertices[0] = tri->GetVertexIndex(1);
+		vertices[1] = tri->GetVertexIndex(2);
+	}
+
+	//Get the edge opposite vertex 1
+	else if(opposing_vertex == 1) {
+		vertices[0] = tri->GetVertexIndex(2);
+		vertices[1] = tri->GetVertexIndex(0);
+	}
+
+	//Get the edge opposite vertex 2
+	else if(opposing_vertex == 2) {
+		vertices[0] = tri->GetVertexIndex(0);
+		vertices[1] = tri->GetVertexIndex(1);
+	}
+
+	return true;
+}

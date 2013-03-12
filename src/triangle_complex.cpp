@@ -7,11 +7,7 @@ TriangleComplex::TriangleComplex() {
 	global_vertex_list->push_back(NULL);
 
 	//Initialize all the other variables
-	vertex_list = new vector<unsigned int>;
-	vertex_list->clear();
-
-	triangle_list = new TriangleList;
-	triangle_list->clear();
+	initialize();
 }
 
 TriangleComplex::TriangleComplex(VertexList* global_vertex_list) {
@@ -19,27 +15,11 @@ TriangleComplex::TriangleComplex(VertexList* global_vertex_list) {
 	this->global_vertex_list = global_vertex_list;
 
 	//Initialize all the other variables
-	vertex_list = new vector<unsigned int>;
-	vertex_list->clear();
-
-	triangle_list = new TriangleList;
-	triangle_list->clear();
+	initialize();
 }
 
 TriangleComplex::~TriangleComplex() {
-	//Delete the vertex list
-	vertex_list->clear();
-	delete vertex_list;
-
-	//Delete the triangle list
-	if(triangle_list) {
-		for(unsigned int i=0; i<triangle_list->size(); i++)
-			if((*triangle_list)[i] != NULL)
-				delete (*triangle_list)[i];
-
-		triangle_list->clear();
-		delete triangle_list;
-	}
+	free_data();
 }
 
 //General use functions
@@ -229,6 +209,44 @@ int TriangleComplex::generate_random_vertex_list(int num, double xmin, double xm
 
 
 //Internal use functions
+int TriangleComplex::initialize() {
+	vertex_list = new vector<unsigned int>;
+	vertex_list->clear();
+
+	triangle_list = new TriangleList;
+	triangle_list->clear();
+
+	//Clear some lists
+	incomplete_vertices.clear();
+	incomplete_vertices_adjacent_triangles.clear();
+	incomplete_edges.clear();
+
+	return true;
+}
+
+int TriangleComplex::free_data() {
+	//Delete the vertex list
+	vertex_list->clear();
+	delete vertex_list;
+
+	//Delete the triangle list
+	if(triangle_list) {
+		for(unsigned int i=0; i<triangle_list->size(); i++)
+			if((*triangle_list)[i] != NULL)
+				delete (*triangle_list)[i];
+
+		triangle_list->clear();
+		delete triangle_list;
+	}
+
+	//Clear some lists
+	incomplete_vertices.clear();
+	incomplete_vertices_adjacent_triangles.clear();
+	incomplete_edges.clear();
+
+	return true;
+}
+
 int TriangleComplex::basic_triangle_mesher() {
 	//Safety test
 	if(GetVertexCount() < 4) {
@@ -369,19 +387,70 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 	incomplete_vertices_adjacent_triangles.clear();
 	incomplete_edges.clear();
 
+	//All vertices are considered incomplete for now
+	incomplete_vertices = *vertex_list;
+	incomplete_vertices_adjacent_triangles.resize(GetVertexCount());
+
 	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		//Go through the vertices of this triangle
+		for(int j=0; j<3; j++) {
+			//Manage the incomplete edge list
+			TriangleEdge tej(i, j);
+			tej.GetVertices(tri);
+
+			vector<TriangleEdge>::iterator find_result;
+			find_result = find(incomplete_edges.begin(), incomplete_edges.end(), tej);
+
+			//If edge j was not in the incomplete edge list append it
+			if(find_result == incomplete_edges.end())
+				incomplete_edges.push_back(tej);
+
+			//Otherwise we know this edge is complete so remove it
+			else
+				incomplete_edges.erase(find_result);
+
+			//Manage the incomplete vertices list
+			unsigned int vindex = tri->GetVertexIndex(j);
+
+			for(unsigned int k=0; k<incomplete_vertices.size(); k++) {
+				if(incomplete_vertices[k] == vindex) {
+					incomplete_vertices_adjacent_triangles[k].push_back(tri);
+					break;
+				}
+			}
+		}
+	}
+
+	//Screen out the complete vertices from the incomplete ones
+	int removed_vertex = false;
+	for(unsigned int i=0; i<incomplete_vertices.size(); i++) {
+		if(removed_vertex == true) {
+			i--;
+			removed_vertex = false;
+		}
+
+		unsigned int vindex = incomplete_vertices[i];
+		TriangleList tri_list = incomplete_vertices_adjacent_triangles[i];
+
+		if(is_vertex_complete(vindex, tri_list)) {
+			incomplete_vertices.erase(incomplete_vertices.begin() + i);
+			incomplete_vertices_adjacent_triangles.erase(incomplete_vertices_adjacent_triangles.begin() + i);
+			removed_vertex = true;
+		}
 	}
 
 	return true;
 }
 
-int TriangleComplex::is_vertex_complete(unsigned int vertex, TriangleList adjacent_triangles) {
+int TriangleComplex::is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles) {
 	//This function assumes that all the triangles are oriented ccw, and
-	//basically checks to see if the verticex is completely surrounded by triangles
+	//basically checks to see if the vertex is completely surrounded by triangles
 
 	//Safety check for the null vertex
 	// + returning true means the algorithm will overlook this vertex from now on
-	if(GetVertexIndex(vertex) == 0)
+	if(vindex == 0)
 		return true;
 
 	//A vertex needs to be surrounded by at least three triangles to be complete
@@ -389,7 +458,6 @@ int TriangleComplex::is_vertex_complete(unsigned int vertex, TriangleList adjace
 		return false;
 
 	//Try to form a cycle of edges around the vertex
-	unsigned int vindex = GetVertexIndex(vertex);
 	for(unsigned int i=0; i<adjacent_triangles.size(); i++) {
 		unsigned int next_vertex = adjacent_triangles[i]->GetNextVertex(vindex);
 
