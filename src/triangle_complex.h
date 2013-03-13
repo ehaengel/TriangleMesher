@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <string>
 #include <vector>
 #include <algorithm>
 using namespace std;
@@ -35,10 +36,13 @@ public:
 
 	unsigned int GetTriangleCount();
 	Triangle* GetTriangle(unsigned int tindex);
+	unsigned int AppendTriangle(Triangle* tri);
 
 	unsigned int GetVertexCount();
 	unsigned int GetVertexIndex(unsigned int vertex);
+
 	Vector2d* GetVertex(unsigned int vertex);
+	Vector2d* GetGlobalVertex(unsigned int vindex);
 
 	int SetVertexIndex(unsigned int vertex, unsigned int vindex);
 	int AppendVertexIndex(unsigned int vindex);
@@ -65,8 +69,16 @@ private:
 	// Internal use functions //
 	////////////////////////////
 
+	//Memory management
 	int initialize();
 	int free_data();
+
+	//File reading functions
+	int load_vertices(FILE* handle);
+	int load_triangles(FILE* handle);
+
+	int load_vertex_tag(char* str, Vector2d* &res);
+	int load_triangle_tag(char* str, Triangle* &res);
 
 	//Get a vertex referenced by the internal vertex list
 	Vector2d* get_vertex(unsigned int index);
