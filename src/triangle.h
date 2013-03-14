@@ -13,6 +13,9 @@ using namespace std;
 //Prototype this class
 class TriangleEdge;
 
+//Returns true if the segments v1-v2 and w1-w2 overlap
+int TestLineSegmentOverlap(Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2);
+
 class Triangle {
 public:
 	Triangle(VertexList* global_vertex_list);
@@ -28,15 +31,19 @@ public:
 
 	int GetVertexCount();
 	unsigned int GetVertexIndex(int vertex);
+
 	Vector2d* GetVertex(int vertex);
+	Vector2d* GetGlobalVertex(unsigned int vindex);
 
 	unsigned int GetNextVertex(unsigned int vindex);
 	unsigned int GetPrevVertex(unsigned int vindex);
 
+	int IsVertex(unsigned int vindex);
+
 	//Adjacent triangles
 	int GetAdjacentTriangleCount();
-	int SetAdjacentTriangle(int vertex, Triangle* tri);
-	Triangle* GetAdjacentTriangle(int vertex);
+	int SetAdjacentTriangle(int opposing_vertex, Triangle* tri);
+	Triangle* GetAdjacentTriangle(int opposing_vertex);
 
 	//////////////////////////
 	// Geometric primitives //
@@ -62,6 +69,12 @@ public:
 
 	//General test for triangle overlap
 	int TestOverlap(Triangle* tri);
+
+	//Test Delaunay condition with an adjacent triangle
+	int TestDelaunay(int opposing_vertex);
+
+	//Perform a Delaunay flip with an adjacent triangle
+	int PerformDelaunayFlip(int opposing_vertex);
 
 	//Get the circumcircle of this triangle
 	int GetCircumcircle(Vector2d& center, double& radius);

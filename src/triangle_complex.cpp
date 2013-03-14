@@ -180,6 +180,16 @@ int TriangleComplex::RunTriangleMesher() {
 }
 
 int TriangleComplex::RunDelaunayFlips() {
+	if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
+		//Split up mesh via kd-tree
+	}
+
+	else {
+		//Run a simple triangle mesher
+		if(basic_delaunay_flipper() == false)
+			return false;
+	}
+
 	return true;
 }
 
@@ -375,13 +385,10 @@ int TriangleComplex::basic_triangle_mesher() {
 
 	//Counts the number of loops
 	int count = 0;
-	//write_svg("run0.svg", 300, 300);
 
 	//The meshing algorithm
 	int done = false;
 	while(!done) {
-		//printf("Start\n");
-
 		//Assert that we are done finding new triangles
 		done = true;
 
@@ -394,46 +401,22 @@ int TriangleComplex::basic_triangle_mesher() {
 			//Try to match up this edge with a vertex
 			TriangleEdge te = incomplete_edges[i];
 
-			//printf("Looking at incomplete edge: %u\n", i);
-			//printf("vertices: %u %u\n", te.vertices[0], te.vertices[1]);
-
 			for(unsigned int j=0; j<incomplete_vertices.size(); j++) {
-				//printf("Looking at incomplete vertex: %u\n", incomplete_vertices[j]);
-				//(*global_vertex_list)[incomplete_vertices[j]]->print();
-				//printf("\n\nTesting vertex %u\n", GetVertexIndex(incomplete_vertices[j]));
-				//printf("AF1\n");
-
 				//First make sure this vertex is not degenerate
 				Vector2d* vj = GetGlobalVertex(incomplete_vertices[j]);
 				if(vj == NULL)
 					continue;
 
-				//printf("Triangle opposing vertex: %u\n", GetTriangle(te.tindex)->GetVertexIndex(te.opposing_vertex));
-				//printf("%u %u %u\n", GetTriangle(te.tindex)->GetVertexIndex(0), GetTriangle(te.tindex)->GetVertexIndex(1), GetTriangle(te.tindex)->GetVertexIndex(2));
-
-				//printf("testing vertex: "); vj->print();
-				//printf("result: %d\n", GetTriangle(te.tindex)->TestPointEdgeOrientation(te.opposing_vertex, *vj));
-
 				//Next make sure that this vertex is on the correct side of the edge
-				if(GetTriangle(te.tindex)->TestPointEdgeOrientation(te.opposing_vertex, *vj) != -1) {
-					/*printf("\n");
-					GetTriangle(te.tindex)->GetVertex(0)->print();
-					GetTriangle(te.tindex)->GetVertex(1)->print();
-					GetTriangle(te.tindex)->GetVertex(2)->print();
-					(*global_vertex_list)[incomplete_vertices[j]]->print();
-					printf("Opposing(%d): ", te.opposing_vertex); GetTriangle(te.tindex)->GetVertex(te.opposing_vertex)->print();
-
-					printf("ORIENTATION FAIL\n");*/
+				if(GetTriangle(te.tindex)->TestPointEdgeOrientation(te.opposing_vertex, *vj) != -1)
 					continue;
-				}
-
-				//printf("AF2\n");
 
 				//Make sure the incomplete vertex is not the opposite vertex for our edge
 				if(incomplete_vertices[j] == GetTriangle(te.tindex)->GetVertexIndex(te.opposing_vertex)) {
 					//printf("OPPOSITE VERTEX FAIL\n");
 					continue;
 				}
+
 
 				//Create a test triangle
 				new_tri->SetVertex(0, incomplete_vertices[j]);
@@ -443,12 +426,13 @@ int TriangleComplex::basic_triangle_mesher() {
 				//printf("AF3\n");
 
 				//Try to orient vertices, and if its a degenerate triangle skip it
-				if(new_tri->OrientVertices() == false) {
-					//printf("%u %u %u\n", new_tri->GetVertexIndex(0), new_tri->GetVertexIndex(1), new_tri->GetVertexIndex(2));
-
-					//printf("DEGENERATE TRIANGLE\n");
+				if(new_tri->OrientVertices() == false)
 					continue;
-				}
+
+				//Make sure that the new triangle does not violate the delaunay condition
+				//Vector2d* vo = GetTriangle(te.tindex)->GetVertex(te.opposing_vertex);
+				//if(vo != NULL && new_tri->TestPointInsideCircumcircle(*vo) == true)
+				//	continue;
 
 				//Test to see if new_tri overlaps with any vertices
 				int found_vertex_overlap = false;
@@ -458,7 +442,6 @@ int TriangleComplex::basic_triangle_mesher() {
 						continue;
 
 					if(new_tri->TestPointInside(*vk, true) == true) {
-						//printf("VERTEX OVERLAP FAIL\n");
 						found_vertex_overlap = true;
 						break;
 					}
@@ -466,29 +449,22 @@ int TriangleComplex::basic_triangle_mesher() {
 				if(found_vertex_overlap == true)
 					continue;
 
-				//printf("AF4\n");
-
 				//Test to see if new_tri overlaps with any of the other triangles
 				int found_triangle_overlap = false;
 				for(unsigned int k=0; k<GetTriangleCount(); k++) {
 					Triangle* tri = GetTriangle(k);
 
 					if(new_tri->TestOverlap(tri)) {
-						//printf("TRIANGLE OVERLAP FAIL\n");
 						found_triangle_overlap = true;
 						break;
 					}
 				}
-
-				//printf("AF5 %d\n", found_triangle_overlap);
 
 				//We have found a good triangle
 				if(found_triangle_overlap == false) {
 					found_good_triangle = true;
 					break;
 				}
-
-				//printf("AF6\n");
 			}
 
 			if(found_good_triangle == true)
@@ -497,7 +473,6 @@ int TriangleComplex::basic_triangle_mesher() {
 
 		//Add the newly found triangle to the triangle list
 		if(found_good_triangle) {
-			//printf("LALAAL\n");
 			unsigned int tindex = AppendTriangle(new_tri);
 
 			//Update the incomplete vertex/edge lists
@@ -531,6 +506,11 @@ int TriangleComplex::basic_triangle_mesher() {
 
 					//Check if this edge has been completed
 					if(new_te == te) {
+						//While we're at it, attach the two triangles along this edge
+						new_tri->SetAdjacentTriangle(i, GetTriangle(te.tindex));
+						GetTriangle(te.tindex)->SetAdjacentTriangle(te.opposing_vertex, new_tri);
+
+						//This edge is complete now so remove it from incomplete_edges
 						incomplete_edges.erase(incomplete_edges.begin() + k);
 						found_edge = true;
 						break;
@@ -545,18 +525,12 @@ int TriangleComplex::basic_triangle_mesher() {
 		}
 
 		//Otherwise do some end-of-loop clean-up
-		else {
-			//printf("POOP!\n");
+		else
 			delete new_tri;
-		}
-
-		//printf("incomplete things: %u %u\n", incomplete_vertices.size(), incomplete_edges.size());
-
-		//printf("The finish line\n");
 
 		count++;
-		char filename[1000];
-		sprintf(filename, "run%d.svg", count);
+		//char filename[1000];
+		//sprintf(filename, "run%d.svg", count);
 		//write_svg(filename, 300, 300);
 	}
 
@@ -765,5 +739,49 @@ int TriangleComplex::is_vertex_complete(unsigned int vindex, TriangleList adjace
 	}
 
 	//We were able to cycle around the vertex with adjacent triangle edges
+	return true;
+}
+
+int TriangleComplex::basic_delaunay_flipper() {
+	//Safety test
+	if(GetVertexCount() < 4) {
+		printf("Error: Not enough vertices\n");
+		return false;
+	}
+
+	if(GetTriangleCount() < 2) {
+		printf("Error: Not enough triangles\n");
+		return false;
+	}
+
+	int flip_count = 0;
+	int maximum_flip_count = 100;
+	for(int iter=0; iter<maximum_flip_count; iter++) {
+		//Assert that there is no delaunay flip performed this run
+		int flip_performed = false;
+		printf("iter: %d\n", iter);
+
+		for(unsigned int i=0; i<GetTriangleCount(); i++) {
+			Triangle* tri = GetTriangle(i);
+
+			//Go through each adjacent triangle of tri
+			for(int k=0; k<3; k++) {
+				//Perform a flip if the delaunay condition fails
+				if(tri->TestDelaunay(k) == false) {
+					tri->PerformDelaunayFlip(k);
+					flip_performed = true;
+					//printf("PERFORMED A FLIP\n");
+					//char filename[1000];
+					//sprintf(filename, "run%d.svg", flip_count++);
+					//write_svg(filename, 1000, 1000);
+				}
+			}
+		}
+
+		//Stop if we've converged to a perfect triangulation
+		if(flip_performed == false)
+			break;
+	}
+
 	return true;
 }

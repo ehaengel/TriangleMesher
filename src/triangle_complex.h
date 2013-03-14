@@ -91,6 +91,9 @@ private:
 
 	int is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles);
 
+	//The most basic delaunay flipper
+	int basic_delaunay_flipper();
+
 	//////////////////////
 	// Global mesh data //
 	//////////////////////

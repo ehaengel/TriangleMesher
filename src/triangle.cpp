@@ -1,5 +1,55 @@
 #include "triangle.h"
 
+int TestLineSegmentOverlap(Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2) {
+	//Special case: the w-line is vertical
+	if(fabs(w1.x - w2.x) < EFF_ZERO) {
+		//Special case: the v-line is also vertical
+		if(fabs(v1.x - v2.x) < EFF_ZERO) {
+			//Check for degeneracy
+			if(fabs(w1.y - w2.y) < EFF_ZERO)
+				return false;
+
+			double t = (v1.y - w1.y) / (w2.y - w1.y);
+
+			//There was an overlap
+			if(t >= 0 && t <= 1)
+				return true;
+
+			t = (v2.y - w1.y) / (w2.y - w1.y);
+
+			//There was an overlap
+			if(t >= 0 && t <= 1)
+				return true;
+		}
+
+		//General case
+		else {
+			double t = (w1.x - v1.x) / (v2.x - v1.x);
+
+			//There was an overlap
+			if(t >= 0 && t <= 1)
+				return true;
+		}
+	}
+
+	//Otherwise use a general procedure
+	else {
+		double w_slope = (w2.y - w1.y) / (w2.x - w1.x);
+
+		//Solve for the parameter describing the v-line
+		double t = (w1.y - v1.y) + w_slope*(v1.x - w1.x);
+		t /= (v2.y - v1.y) + w_slope*(v2.x - v1.x);
+
+		//There was an overlap
+		if(t >= 0 && t <= 1)
+			return true;
+	}
+
+	//There was no overlap
+	return false;
+}
+
+
 Triangle::Triangle(VertexList* global_vertex_list) {
 	this->global_vertex_list = global_vertex_list;
 
@@ -37,14 +87,6 @@ int Triangle::SetVertex(unsigned int vindex) {
 	//All the vertices are filled
 	else
 		return false;
-
-	//If the vertices have changed reset the circumcircle
-	if(circumcenter != NULL) {
-		delete circumcenter;
-		circumcenter = NULL;
-
-		circumradius = 0.0;
-	}
 
 	return true;
 }
@@ -91,6 +133,14 @@ Vector2d* Triangle::GetVertex(int vertex) {
 	return (*global_vertex_list)[vertices[vertex]];
 }
 
+Vector2d* Triangle::GetGlobalVertex(unsigned int vindex) {
+	//Safety check
+	if(vindex >= global_vertex_list->size())
+		return NULL;
+
+	return (*global_vertex_list)[vindex];
+}
+
 unsigned int Triangle::GetNextVertex(unsigned int vindex) {
 	//This function looks through vertices to find vindex and then
 	//returns the next vertex in vertices that comes after it
@@ -125,6 +175,14 @@ unsigned int Triangle::GetPrevVertex(unsigned int vindex) {
 	return 0;
 }
 
+int Triangle::IsVertex(unsigned int vindex) {
+	if(vertices[0] == vindex) return true;
+	if(vertices[1] == vindex) return true;
+	if(vertices[2] == vindex) return true;
+
+	return false;
+}
+
 int Triangle::GetAdjacentTriangleCount() {
 	int count = 0;
 
@@ -135,14 +193,14 @@ int Triangle::GetAdjacentTriangleCount() {
 	return count;
 }
 
-int Triangle::SetAdjacentTriangle(int vertex, Triangle* tri) {
-	adjacent_triangles[vertex] = tri;
+int Triangle::SetAdjacentTriangle(int opposing_vertex, Triangle* tri) {
+	adjacent_triangles[opposing_vertex] = tri;
 
 	return true;
 }
 
-Triangle* Triangle::GetAdjacentTriangle(int vertex) {
-	return adjacent_triangles[vertex];
+Triangle* Triangle::GetAdjacentTriangle(int opposing_vertex) {
+	return adjacent_triangles[opposing_vertex];
 }
 
 //Geometric primitives
@@ -330,6 +388,246 @@ int Triangle::TestOverlap(Triangle* tri) {
 	return TestOverlapSplittingPlanes(tri);
 }
 
+//Test Delaunay condition with an adjacent triangle
+int Triangle::TestDelaunay(int opposing_vertex) {
+	//Safety test, if the adjacent triangle doesn't exist then the condition is satisfied
+	Triangle* adj_tri = GetAdjacentTriangle(opposing_vertex);
+	if(adj_tri == NULL)
+		return true;
+
+	//Figure out which of the three vertices of the other triangle is not in this one
+	unsigned int external_vindex = 0;
+
+	if(IsVertex(adj_tri->GetVertexIndex(0)) == false)
+		external_vindex = adj_tri->GetVertexIndex(0);
+
+	else if(IsVertex(adj_tri->GetVertexIndex(1)) == false)
+		external_vindex = adj_tri->GetVertexIndex(1);
+
+	else if(IsVertex(adj_tri->GetVertexIndex(2)) == false)
+		external_vindex = adj_tri->GetVertexIndex(2);
+
+	//These triangles are somehow identical, which is an error, but return true anyway
+	else
+		return true;
+
+	Vector2d* ve = GetGlobalVertex(external_vindex);
+	if(ve == NULL)
+		return true;
+
+	//Test the Delaunay condition
+	if(TestPointInsideCircumcircle(*ve) == true)
+		return false;
+
+
+	//Figure out which of the three vertices of this triangle is not in the other one
+	unsigned int internal_vindex = 0;
+
+	if(adj_tri->IsVertex(GetVertexIndex(0)) == false)
+		internal_vindex = GetVertexIndex(0);
+
+	else if(adj_tri->IsVertex(GetVertexIndex(1)) == false)
+		internal_vindex = GetVertexIndex(1);
+
+	else if(adj_tri->IsVertex(GetVertexIndex(2)) == false)
+		internal_vindex = GetVertexIndex(2);
+
+	//These triangles are somehow identical, which is an error, but return true anyway
+	else
+		return true;
+
+	Vector2d* vi = GetGlobalVertex(internal_vindex);
+	if(vi == NULL)
+		return true;
+
+	//Test the Delaunay condition
+	if(adj_tri->TestPointInsideCircumcircle(*vi) == true)
+		return false;
+
+	//Lastly check to make sure the edge actually lies inbetween the two vertices
+	Vector2d* v0 = NULL;
+	Vector2d* v1 = NULL;
+
+	if(opposing_vertex == 0) {
+		v0 = GetVertex(1);
+		v1 = GetVertex(2);
+	}
+	else if(opposing_vertex == 1) {
+		v0 = GetVertex(2);
+		v1 = GetVertex(0);
+	}
+	else if(opposing_vertex == 2) {
+		v0 = GetVertex(0);
+		v1 = GetVertex(1);
+	}
+
+	//Safety check
+	if(v0 == NULL || v1 == NULL)
+		return true;
+
+	//if(TestLineSegmentOverlap(*vi, *ve, *v0, *v1) == false)
+	//	return true;
+
+	//Neither of the two Delaunay tests failed
+	return true;
+}
+
+//Perform a Delaunay flip with an adjacent triangle
+int Triangle::PerformDelaunayFlip(int opposing_vertex) {
+	//Safety test, don't do anything if there is no adjacent triangle
+	Triangle* adj_tri = GetAdjacentTriangle(opposing_vertex);
+	if(adj_tri == NULL)
+		return false;
+
+	unsigned int combined_vertices[4];
+	Triangle* adjacent_triangles[4];
+
+	combined_vertices[0] = 0;
+	combined_vertices[1] = 0;
+	combined_vertices[2] = 0;
+	combined_vertices[3] = 0;
+
+	adjacent_triangles[0] = NULL;
+	adjacent_triangles[1] = NULL;
+	adjacent_triangles[2] = NULL;
+	adjacent_triangles[3] = NULL;
+
+	//printf("ASDF\n");
+	for(int i=0; i<3; i++) {
+		if(adj_tri->IsVertex(GetVertexIndex(i)) == false)
+			combined_vertices[0] = GetVertexIndex(i);
+
+		if(IsVertex(adj_tri->GetVertexIndex(i)) == false)
+			combined_vertices[2] = adj_tri->GetVertexIndex(i);
+	}
+	//combined_vertices[0] = GetVertexIndex(opposing_vertex);
+
+	//printf("LALA\n");
+	combined_vertices[1] = GetNextVertex(combined_vertices[0]);
+	combined_vertices[3] = GetPrevVertex(combined_vertices[0]);
+
+	/*combined_vertices[3] = adj_tri->GetNextVertex(combined_vertices[2]);
+	if(combined_vertices[3] == combined_vertices[1])
+		combined_vertices[3] = adj_tri->GetPrevVertex(combined_vertices[2]);*/
+
+	//printf("%u %u %u %u %u %u\n", GetVertexIndex(0), GetVertexIndex(1), GetVertexIndex(2), adj_tri->GetVertexIndex(0), adj_tri->GetVertexIndex(1), adj_tri->GetVertexIndex(2));
+	//printf("%u %u %u %u\n", combined_vertices[0], combined_vertices[1], combined_vertices[2], combined_vertices[3]);
+
+	for(int i=0; i<3; i++) {
+		if(GetVertexIndex(i) == combined_vertices[3])
+			adjacent_triangles[0] = GetAdjacentTriangle(i);
+
+		if(GetVertexIndex(i) == combined_vertices[1])
+			adjacent_triangles[3] = GetAdjacentTriangle(i);
+
+		if(adj_tri->GetVertexIndex(i) == combined_vertices[3])
+			adjacent_triangles[1] = adj_tri->GetAdjacentTriangle(i);
+
+		if(adj_tri->GetVertexIndex(i) == combined_vertices[1])
+			adjacent_triangles[2] = adj_tri->GetAdjacentTriangle(i);
+	}
+
+	//Update the adjacent triangles of the adjacent triangles 1 and 3
+	for(int i=0; i<3; i++) {
+		if(adjacent_triangles[1] && adj_tri->IsVertex(adjacent_triangles[1]->GetVertexIndex(i)) == false)
+			adjacent_triangles[1]->SetAdjacentTriangle(i, this);
+
+		if(adjacent_triangles[3] && IsVertex(adjacent_triangles[3]->GetVertexIndex(i)) == false)
+			adjacent_triangles[3]->SetAdjacentTriangle(i, adj_tri);
+	}
+
+	//printf("OKKOK\n");
+	//Flip the vertices around
+	SetVertex(0, combined_vertices[1]);
+	SetVertex(1, combined_vertices[0]);
+	SetVertex(2, combined_vertices[2]);
+
+	adj_tri->SetVertex(0, combined_vertices[3]);
+	adj_tri->SetVertex(1, combined_vertices[2]);
+	adj_tri->SetVertex(2, combined_vertices[0]);
+
+	//printf("BNLA\n");
+	//Flip the adjacent triangles around
+	SetAdjacentTriangle(0, adj_tri);
+	SetAdjacentTriangle(1, adjacent_triangles[1]);
+	SetAdjacentTriangle(2, adjacent_triangles[0]);
+
+	adj_tri->SetAdjacentTriangle(0, this);
+	adj_tri->SetAdjacentTriangle(1, adjacent_triangles[3]);
+	adj_tri->SetAdjacentTriangle(2, adjacent_triangles[2]);
+
+	//printf("OPKOK\n");
+	OrientVertices();
+	adj_tri->OrientVertices();
+	//printf("ALL GOOD\n");
+
+	return true;
+}
+
+//Perform a Delaunay flip with an adjacent triangle
+/*int Triangle::PerformDelaunayFlip(int opposing_vertex) {
+	//Safety test, don't do anything if there is no adjacent triangle
+	Triangle* adj_tri = GetAdjacentTriangle(opposing_vertex);
+	if(adj_tri == NULL)
+		return false;
+
+	unsigned int combined_vertices[4];
+	combined_vertices[0] = GetVertexIndex(0);
+	combined_vertices[1] = GetVertexIndex(1);
+	combined_vertices[2] = GetVertexIndex(2);
+	combined_vertices[3] = 0;
+
+	Triangle* adjacent_triangles[6];
+	adjacent_triangles[0] = GetAdjacentTriangle(0);
+	adjacent_triangles[1] = GetAdjacentTriangle(1);
+	adjacent_triangles[2] = GetAdjacentTriangle(2);
+
+	adjacent_triangles[3] = adj_tri->GetAdjacentTriangle(0);
+	adjacent_triangles[4] = adj_tri->GetAdjacentTriangle(1);
+	adjacent_triangles[5] = adj_tri->GetAdjacentTriangle(2);
+
+	for(int i=0; i<3; i++) {
+		int vertex_in_list = false;
+
+		for(int j=0; j<3; j++) {
+			if(combined_vertices[j] == adj_tri->GetVertexIndex(i)) {
+				vertex_in_list = true;
+				break;
+			}
+		}
+
+		if(vertex_in_list == false) {
+			combined_vertices[3] = adj_tri->GetVertexIndex(i);
+			break;
+		}
+	}
+
+	if(opposing_vertex == 0) {
+		//printf("%u %u %u %u\n", combined_vertices[0], combined_vertices[1], combined_vertices[2], combined_vertices[3]);
+		//printf("Flipping triangles:\n");
+		//printf("%u %u %u\n", GetVertexIndex(0), GetVertexIndex(1), GetVertexIndex(2));
+		//printf("%u %u %u\n\n", adj_tri->GetVertexIndex(0), adj_tri->GetVertexIndex(1), adj_tri->GetVertexIndex(2));
+
+		//Flip around the vertices
+		SetVertex(0, combined_vertices[0]);
+		SetVertex(1, combined_vertices[3]);
+		SetVertex(2, combined_vertices[1]);
+
+		adj_tri->SetVertex(0, combined_vertices[0]);
+		adj_tri->SetVertex(1, combined_vertices[3]);
+		adj_tri->SetVertex(2, combined_vertices[2]);
+	}
+
+
+	else
+		return false;
+
+	OrientVertices();
+	adj_tri->OrientVertices();
+
+	return true;
+}*/
+
 int Triangle::GetCircumcircle(Vector2d& center, double& radius) {
 	//For safety, set some default values
 	center.x = 0.0;
@@ -367,8 +665,15 @@ int Triangle::OrientVertices() {
 	if(det < -EFF_ZERO) {
 		//Switch the first two vertices
 		unsigned int v0_index = vertices[0];
-		vertices[0] = vertices[1];
-		vertices[1] = v0_index;
+		SetVertex(0, GetVertexIndex(1));
+		SetVertex(1, v0_index);
+		//vertices[0] = vertices[1];
+		//vertices[1] = v0_index;
+
+		//Also switch the adjacent triangles across from those vertices
+		Triangle* adj_tri = GetAdjacentTriangle(0);
+		SetAdjacentTriangle(0, GetAdjacentTriangle(1));
+		SetAdjacentTriangle(1, adj_tri);
 	}
 
 	return true;
@@ -390,6 +695,28 @@ int Triangle::write_svg(FILE* handle, double w, double h) {
 
 	fprintf(handle, "<polygon points=\"%f,%f %f,%f %f,%f\" ", v0->x, h-v0->y, v1->x, h-v1->y, v2->x, h-v2->y);
 	fprintf(handle, "fill=\"green\" stroke=\"black\" srtoke-width=\"2\" style=\"fill-opacity:0.5\"/>\n");
+
+	/*if(compute_circumcircle() == true) {
+		//Draw the circumcenter
+		double cx = circumcenter->x;
+		double cy = circumcenter->y;
+		double r = 10.0;
+		fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"purple\"/>\n", cx, h-cy, r);
+
+		for(int i=0; i<3; i++) {
+			Triangle* adj_tri = GetAdjacentTriangle(i);
+
+			if(adj_tri != NULL) {
+				Vector2d adj_circumcenter;
+				double adj_circumradius = 0.0;
+
+				if(adj_tri->GetCircumcircle(adj_circumcenter, adj_circumradius) == true) {
+					fprintf(handle, "<line x1=\"%f\" y1=\"%f\" ", circumcenter->x, h-circumcenter->y);
+					fprintf(handle, "x2=\"%f\" y2=\"%f\" stroke-width=\"2\" stroke=\"red\"/>\n", adj_circumcenter.x, h-adj_circumcenter.y);
+				}
+			}
+		}
+	}*/
 
 	return true;
 }
