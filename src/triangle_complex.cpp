@@ -1203,8 +1203,15 @@ int TriangleComplex::compute_kd_prism() {
 	for(unsigned int i=0; i<GetVertexCount(); i++) {
 		Vector2d* vi = GetVertex(i);
 
-		if(vi != NULL)
-			kd_prism->Expand(*vi);
+		if(vi != NULL) {
+			if(prism_initialized == false) {
+				kd_prism->SetMinMax(*vi, *vi);
+				prism_initialized = true;
+			}
+
+			else
+				kd_prism->Expand(*vi);
+		}
 	}
 
 	return true;
