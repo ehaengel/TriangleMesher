@@ -52,12 +52,12 @@ int main(int argc, char** argv) {
 		printf("Error occured in the mesher\n");
 		//return 1;
 	}
-	triangle_complex->write_svg("out.svg", 1000.0, 1000.0);
+	//triangle_complex->write_svg("out.svg", 1000.0, 1000.0);
 
-	if(triangle_complex->RunDelaunayFlips() == false) {
+	/*if(triangle_complex->RunDelaunayFlips() == false) {
 		printf("Error occured in the delaunay flipper\n");
 		//return 1;
-	}
+	}*/
 
 	triangle_complex->write_svg("out2.svg", 1000.0, 1000.0);
 	triangle_complex->WriteToFile("test.msh");

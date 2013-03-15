@@ -113,6 +113,55 @@ Triangle* TriangleComplex::GetTriangle(unsigned int tindex) {
 	return (*triangle_list)[tindex];
 }
 
+int TriangleComplex::RemoveTriangle(unsigned int tindex) {
+	//Safety check
+	if(tindex >= triangle_list->size())
+		return false;
+
+	Triangle* tri = GetTriangle(tindex);
+
+	if(tri != NULL) {
+		//Remove the triangle from any adjacencies
+		for(unsigned int i=0; i<triangle_list->size(); i++) {
+			for(int j=0; j<3; j++) {
+				if((*triangle_list)[i]->GetAdjacentTriangle(j) == (*triangle_list)[tindex])
+					(*triangle_list)[i]->SetAdjacentTriangle(j, NULL);
+			}
+		}
+
+		//Remove the triangle from any incomplete vertices
+		for(unsigned int i=0; i<incomplete_vertices_adjacent_triangles.size(); i++) {
+			for(unsigned int j=0; j<incomplete_vertices_adjacent_triangles[i].size(); j++) {
+				if(incomplete_vertices_adjacent_triangles[i][j] == GetTriangle(tindex)) {
+					incomplete_vertices_adjacent_triangles[i].erase(incomplete_vertices_adjacent_triangles[i].begin() + j);
+					break;
+				}
+			}
+		}
+
+		//Remove the triangle's edges from the incomplete edge list
+		for(int i=0; i<3; i++) {
+			TriangleEdge te(tindex, i);
+			te.GetVertices(tri);
+
+			for(unsigned int j=0; j<incomplete_edges.size(); j++) {
+				if(incomplete_edges[j] == te) {
+					incomplete_edges.erase(incomplete_edges.begin() + j);
+					break;
+				}
+			}
+		}
+
+		//Delete the actual triangle
+		delete (*triangle_list)[tindex];
+	}
+
+	//Finally erase the triangle from the triangle list
+	triangle_list->erase(triangle_list->begin() + tindex);
+
+	return true;
+}
+
 unsigned int TriangleComplex::AppendTriangle(Triangle* tri) {
 	unsigned int tindex = triangle_list->size();
 	triangle_list->push_back(tri);
@@ -164,15 +213,104 @@ int TriangleComplex::AppendVertexIndex(unsigned int vindex) {
 	return true;
 }
 
+vector<unsigned int> TriangleComplex::GetIncompleteVertices() {
+	return incomplete_vertices;
+}
+
+vector<TriangleList> TriangleComplex::GetIncompleteVerticesAdjacentTriangles() {
+	return incomplete_vertices_adjacent_triangles;
+}
+
+vector<TriangleEdge> TriangleComplex::GetIncompleteEdges() {
+	return incomplete_edges;
+}
+
+int TriangleComplex::SetIncompleteListsComputed(int incomplete_lists_computed) {
+	this->incomplete_lists_computed = incomplete_lists_computed;
+}
+
 //Meshing functions
 int TriangleComplex::RunTriangleMesher() {
-	if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
+	/*if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
 		//Split up mesh via kd-tree
+		if(CreateKDTree() == false)
+			return false;
+
+		for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
+			(*kd_leaf_nodes)[i]->RunTriangleMesher();
+			(*kd_leaf_nodes)[i]->RunDelaunayFlips();
+		}
 	}
 
 	else {
 		//Run a simple triangle mesher
 		if(basic_triangle_mesher() == false)
+			return false;
+	}*/
+
+	//If this is the kd_parent
+	if(kd_parent == NULL) {
+		printf("MESHING THE PARENT NODE!!\n");
+		if(CreateKDTree() == false)
+			return false;
+
+		printf("DONE FOREVER WITH CREATING THE KD-TREE\n\n");
+
+		while(kd_leaf_nodes->size() > 1) {
+			//Mesh all the leaf nodes
+			for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
+				(*kd_leaf_nodes)[i]->RunTriangleMesher();
+				(*kd_leaf_nodes)[i]->RunDelaunayFlips();
+			}
+
+			//Combine sibling leaf-nodes
+			vector<TriangleComplex*> new_kd_leaf_nodes;
+			new_kd_leaf_nodes.clear();
+
+			printf("Starting with %u kd leaf nodes\n", kd_leaf_nodes->size());
+			int done = false;
+			while(kd_leaf_nodes->size() > 1) {
+				TriangleComplex* tc_parent = (*kd_leaf_nodes)[0]->GetKDParent();
+
+				//Safety check
+				if(tc_parent == NULL) {
+					printf("OH NOES\n");
+					return false;
+				}
+
+				//Combine the children to create a new leaf node
+				// + This will delete the children from kd_leaf_nodes
+				if(tc_parent->CombineChildren() == false) {
+					printf("FAILED TO COMBINE CHILDREN: %u\n", kd_leaf_nodes->size());
+					return false;
+				}
+
+				new_kd_leaf_nodes.push_back(tc_parent);
+			}
+			if(done == true)
+				break;
+
+			*kd_leaf_nodes = new_kd_leaf_nodes;
+			printf("KD LEAF NODE COUNT: %u\n", kd_leaf_nodes->size());
+		}
+
+		printf("Number of incomplete vertices: %u\n", incomplete_vertices.size());
+		CombineChildren();
+		printf("Number of incomplete vertices: %u\n", incomplete_vertices.size());
+
+		if(basic_triangle_mesher() == false)
+			return false;
+
+		if(basic_delaunay_flipper() == false)
+			return false;
+	}
+
+	//Otherwise
+	else {
+		if(basic_triangle_mesher() == false)
+			return false;
+
+		if(basic_delaunay_flipper() == false)
 			return false;
 	}
 
@@ -194,6 +332,227 @@ int TriangleComplex::RunDelaunayFlips() {
 }
 
 
+//K-d tree related functions
+int TriangleComplex::CreateKDTree() {
+	//The top node creates a global kd prism
+	if(kd_parent == NULL) {
+		//Create the list of leaf nodes
+		kd_leaf_nodes = new vector<TriangleComplex*>;
+
+		if(compute_kd_prism() == false) {
+			kd_leaf_nodes->push_back(this);
+			return false;
+		}
+	}
+
+	//Check the subdivision condition
+	if(GetVertexCount() < MAXIMUM_MESH_SIZE) {
+		kd_leaf_nodes->push_back(this);
+		return true;
+	}
+
+	//Get the vertex with which to split up this triangle complex
+	unsigned int splitting_index = compute_centermost_vertex(kd_splitting_dimension);
+	Vector2d* vs = GetVertex(splitting_index);
+	if(vs == NULL) {
+		kd_leaf_nodes->push_back(this);
+		return false;
+	}
+
+	printf("splitting index: %u\n", splitting_index);
+
+	//Create two children complices
+	kd_child[0] = new TriangleComplex(global_vertex_list);
+	kd_child[1] = new TriangleComplex(global_vertex_list);
+
+	for(unsigned int i=0; i<GetVertexCount(); i++) {
+		Vector2d* vi = GetVertex(i);
+
+		if(vi != NULL) {
+			if(kd_splitting_dimension == 0) {
+				if(vi->x <= vs->x)
+					kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
+
+				if(vi->x > vs->x)
+					kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
+			}
+
+			else if(kd_splitting_dimension == 1) {
+				if(vi->y <= vs->y)
+					kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
+
+				if(vi->y > vs->y)
+					kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
+			}
+		}
+	}
+
+	vs->print();
+	printf("%u %u\n", kd_child[0]->GetVertexCount(), kd_child[1]->GetVertexCount());
+
+	//Set up the prisms for the two children
+	Vector2d min = kd_prism->GetMin();
+	Vector2d max = kd_prism->GetMax();
+
+	Vector2d max0 = max;
+	Vector2d min1 = min;
+
+	if(kd_splitting_dimension == 0) {
+		max0.x = vs->x;
+		min1.x = vs->x;
+	}
+	else {
+		max0.y = vs->y;
+		min1.y = vs->y;
+	}
+
+	Prism* kd_child_prism[2];
+
+	kd_child_prism[0] = new Prism;
+	kd_child_prism[0]->SetMin(min);
+	kd_child_prism[0]->SetMax(max0);
+
+	kd_child_prism[1] = new Prism;
+	kd_child_prism[1]->SetMin(min1);
+	kd_child_prism[1]->SetMax(max);
+
+	kd_child[0]->SetKDTreePrisms(kd_tree_prisms);
+	kd_child[0]->SetKDPrism(kd_child_prism[0]);
+
+	kd_child[1]->SetKDTreePrisms(kd_tree_prisms);
+	kd_child[1]->SetKDPrism(kd_child_prism[1]);
+
+	//Make the children point to this as their parent
+	kd_child[0]->SetKDParent(this);
+	kd_child[1]->SetKDParent(this);
+
+	//Set up the children with the right splitting dimension
+	kd_child[0]->SetKDSplittingDimension((kd_splitting_dimension+1) % 2);
+	kd_child[1]->SetKDSplittingDimension((kd_splitting_dimension+1) % 2);
+
+	//Set up the children with a pointer to the leaf nodes
+	kd_child[0]->SetKDLeafNodes(kd_leaf_nodes);
+	kd_child[1]->SetKDLeafNodes(kd_leaf_nodes);
+
+	if(kd_child[0]->CreateKDTree() == false)
+		return false;
+
+	if(kd_child[1]->CreateKDTree() == false)
+		return false;
+
+	return true;
+}
+
+int TriangleComplex::CombineChildren() {
+	//Safety check
+	if(kd_child[0] == NULL || kd_child[1] == NULL)
+		return false;
+
+	//Calculate the time spent combining children
+	clock_t start_time = clock();
+
+	//Get all the triangles from the children
+	for(unsigned int i=0; i<kd_child[0]->GetTriangleCount(); i++)
+		AppendTriangle(kd_child[0]->GetTriangle(i));
+
+	for(unsigned int i=0; i<kd_child[1]->GetTriangleCount(); i++)
+		AppendTriangle(kd_child[1]->GetTriangle(i));
+
+	//Get the incomplete vertex lists from the children
+	/*vector<unsigned int> iv0 = kd_child[0]->GetIncompleteVertices();
+	vector<TriangleList> ivat0 = kd_child[0]->GetIncompleteVerticesAdjacentTriangles();
+
+	for(unsigned int i=0; i<iv0.size(); i++) {
+		incomplete_vertices.push_back(iv0[i]);
+		incomplete_vertices_adjacent_triangles.push_back(ivat0[i]);
+	}
+
+	vector<unsigned int> iv1 = kd_child[1]->GetIncompleteVertices();
+	vector<TriangleList> ivat1 = kd_child[1]->GetIncompleteVerticesAdjacentTriangles();
+
+	for(unsigned int i=0; i<iv1.size(); i++) {
+		incomplete_vertices.push_back(iv1[i]);
+		incomplete_vertices_adjacent_triangles.push_back(ivat1[i]);
+	}
+
+	//Get the incomplete edge lists from the children
+	vector<TriangleEdge> ie0 = kd_child[0]->GetIncompleteEdges();
+
+	for(unsigned int i=0; i<ie0.size(); i++)
+		incomplete_edges.push_back(ie0[i]);
+
+	vector<TriangleEdge> ie1 = kd_child[1]->GetIncompleteEdges();
+
+	for(unsigned int i=0; i<ie1.size(); i++)
+		incomplete_edges.push_back(ie1[i]);*/
+
+	//Remove the children from the kd_leaf_nodes list
+	for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
+		if((*kd_leaf_nodes)[i] == kd_child[0]) {
+			kd_leaf_nodes->erase(kd_leaf_nodes->begin() + i);
+			break;
+		}
+	}
+
+	for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
+		if((*kd_leaf_nodes)[i] == kd_child[1]) {
+			kd_leaf_nodes->erase(kd_leaf_nodes->begin() + i);
+			break;
+		}
+	}
+
+	//Stop pointing to the children
+	kd_child[0] = NULL;
+	kd_child[1] = NULL;
+
+	//Set a flag to save some time later
+	//SetIncompleteListsComputed(true);
+
+	//Calculate the time spent combining children
+	clock_t end_time = clock();
+	printf("Time spent combining children: %fs\n", double(end_time - start_time) / double(CLOCKS_PER_SEC));
+
+	return true;
+}
+
+int TriangleComplex::SetKDParent(TriangleComplex* kd_parent) {
+	this->kd_parent = kd_parent;
+
+	return true;
+}
+
+int TriangleComplex::SetKDSplittingDimension(int kd_splitting_dimension) {
+	this->kd_splitting_dimension = kd_splitting_dimension;
+
+	return true;
+}
+
+int TriangleComplex::SetKDPrism(Prism* kd_prism) {
+	this->kd_prism = kd_prism;
+
+	if(kd_tree_prisms != NULL)
+		kd_tree_prisms->push_back(this->kd_prism);
+
+	return true;
+}
+
+int TriangleComplex::SetKDLeafNodes(vector<TriangleComplex*>* kd_leaf_nodes) {
+	this->kd_leaf_nodes = kd_leaf_nodes;
+
+	return true;
+}
+
+int TriangleComplex::SetKDTreePrisms(PrismList* kd_tree_prisms) {
+	this->kd_tree_prisms = kd_tree_prisms;
+
+	return true;
+}
+
+TriangleComplex* TriangleComplex::GetKDParent() {
+	return kd_parent;
+}
+
+
 //Debugging functions
 int TriangleComplex::write_svg(const char* filename, double w, double h) {
 	//Simple error check
@@ -210,7 +569,7 @@ int TriangleComplex::write_svg(const char* filename, double w, double h) {
 	fprintf(handle, "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"white\"/>\n", 0.0, 0.0, w, h);
 
 	//Write all the triangle/vertex data
-	if(write_svg(handle, w, h) == false) {
+	if(write_svg(handle, w, h, true) == false) {
 		fclose(handle);
 		return false;
 	}
@@ -221,23 +580,33 @@ int TriangleComplex::write_svg(const char* filename, double w, double h) {
 	return true;
 }
 
-int TriangleComplex::write_svg(FILE* handle, double w, double h) {
+int TriangleComplex::write_svg(FILE* handle, double w, double h, int draw_verts) {
 	//Write the triangles/edges
 	for(unsigned int i=0; i<triangle_list->size(); i++)
 		(*triangle_list)[i]->write_svg(handle, w, h);
 
 	//Write the vertices
-	for(unsigned int i=0; i<global_vertex_list->size(); i++) {
-		//Skip the first vertex, it is null
-		if(i == 0)
-			continue;
+	if(draw_verts == true) {
+		for(unsigned int i=0; i<global_vertex_list->size(); i++) {
+			//Skip the first vertex, it is null
+			if(i == 0)
+				continue;
 
-		double cx = (*global_vertex_list)[i]->x;
-		double cy = (*global_vertex_list)[i]->y;
-		double r = 3.0;
+			double cx = (*global_vertex_list)[i]->x;
+			double cy = (*global_vertex_list)[i]->y;
+			double r = 3.0;
 
-		fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"blue\"/>\n", cx, h-cy, r);
+			fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"blue\"/>\n", cx, h-cy, r);
+		}
 	}
+
+	//Write the kd-tree prism
+	if(kd_prism != NULL)
+		kd_prism->write_svg(handle, w, h);
+
+	//If there are kd-children have them write their own triangle/vertex data
+	if(kd_child[0] != NULL) kd_child[0]->write_svg(handle, w, h, false);
+	if(kd_child[1] != NULL) kd_child[1]->write_svg(handle, w, h, false);
 
 	return true;
 }
@@ -268,6 +637,19 @@ int TriangleComplex::initialize() {
 	incomplete_vertices_adjacent_triangles.clear();
 	incomplete_edges.clear();
 
+	incomplete_lists_computed = false;
+
+	//Initialize the kd tree data
+	kd_parent = NULL;
+	kd_child[0] = NULL;
+	kd_child[1] = NULL;
+
+	kd_leaf_nodes = NULL;
+	kd_tree_prisms = NULL;
+
+	kd_prism = NULL;
+	kd_splitting_dimension = 0;
+
 	return true;
 }
 
@@ -292,6 +674,16 @@ int TriangleComplex::free_data() {
 	incomplete_vertices.clear();
 	incomplete_vertices_adjacent_triangles.clear();
 	incomplete_edges.clear();
+
+	//Clean up some kd-tree data
+	if(kd_prism != NULL) {
+		delete kd_prism;
+		kd_prism = NULL;
+	}
+
+	//If this is the top node then clear everything
+	if(kd_parent == NULL)
+		delete kd_tree_prisms;
 
 	return true;
 }
@@ -639,6 +1031,13 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 	if(GetVertexCount() < 4)
 		return false;
 
+	//Don't compute anything if the lists have already been computed
+	if(incomplete_lists_computed == true)
+		return true;
+
+	//Keep track of the time spent in this function
+	time_t start_time = clock();
+
 	//Clear the lists
 	incomplete_vertices.clear();
 	incomplete_vertices_adjacent_triangles.clear();
@@ -701,6 +1100,9 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 		}
 	}
 
+	clock_t end_time = clock();
+	printf("Time spent computing incomplete vertices/edges = %fs\n", double(end_time - start_time) / double(CLOCKS_PER_SEC));
+
 	return true;
 }
 
@@ -759,7 +1161,7 @@ int TriangleComplex::basic_delaunay_flipper() {
 	for(int iter=0; iter<maximum_flip_count; iter++) {
 		//Assert that there is no delaunay flip performed this run
 		int flip_performed = false;
-		printf("iter: %d\n", iter);
+		//printf("iter: %d\n", iter);
 
 		for(unsigned int i=0; i<GetTriangleCount(); i++) {
 			Triangle* tri = GetTriangle(i);
@@ -784,4 +1186,111 @@ int TriangleComplex::basic_delaunay_flipper() {
 	}
 
 	return true;
+}
+
+int TriangleComplex::compute_kd_prism() {
+	//Safety check
+	if(GetVertexCount() == 0)
+		return false;
+
+	if(kd_prism != NULL)
+		delete kd_prism;
+
+	kd_prism = new Prism;
+
+
+	int prism_initialized = false;
+	for(unsigned int i=0; i<GetVertexCount(); i++) {
+		Vector2d* vi = GetVertex(i);
+
+		if(vi != NULL)
+			kd_prism->Expand(*vi);
+	}
+
+	return true;
+}
+
+int TriangleComplex::sort_vertices_by_coordinate(int dim) {
+	//Run a quick sort on the vertex list according to x/y coordinate
+	for(unsigned int i=0; i<GetVertexCount(); i++) {
+		unsigned int minimal_index = i;
+		Vector2d* vm = GetVertex(i);
+
+		for(unsigned int j=i+1; j<GetVertexCount(); j++) {
+			Vector2d* vj = GetVertex(j);
+
+			if(vm == NULL) {
+				vm = vj;
+				minimal_index = j;
+			}
+
+			else if(vj != NULL) {
+				//Sort by x coordinate
+				if(dim == 0 && vm->x > vj->x) {
+					vm = vj;
+					minimal_index = j;
+				}
+
+				//Sort by y coordinate
+				else if(dim == 1 && vm->y > vj->y) {
+					vm = vj;
+					minimal_index = j;
+				}
+			}
+		}
+
+		//Switch the i'th vertex with the minimal_index'th vertex
+		unsigned int vbuf = GetVertexIndex(i);
+		SetVertexIndex(i, GetVertexIndex(minimal_index));
+		SetVertexIndex(minimal_index, vbuf);
+	}
+
+	return true;
+}
+
+unsigned int TriangleComplex::compute_centermost_vertex(int dim) {
+	//Compute the average value of all the vertex components in the direction dim
+	double avg = 0.0;
+	double total_vertex_count = double(GetVertexCount());
+
+	for(unsigned int i=0; i<GetVertexCount(); i++) {
+		Vector2d* vi = GetVertex(i);
+
+		if(vi != NULL) {
+			if(dim == 0)
+				avg += vi->x / total_vertex_count;
+
+			else if(dim == 1)
+				avg += vi->y / total_vertex_count;
+		}
+	}
+
+	//Figure out which vertex is closest to the avg in the direction dim
+	Vector2d* vc = GetVertex(0);
+	unsigned int closest_index = 0;
+
+	for(unsigned int i=0; i<GetVertexCount(); i++) {
+		if(vc == NULL) {
+			closest_index = i;
+			vc = GetVertex(i);
+		}
+
+		else {
+			Vector2d* vi = GetVertex(i);
+
+			if(vi != NULL) {
+				if(dim == 0 && fabs(vi->x - avg) < fabs(vc->x - avg)) {
+					vc = vi;
+					closest_index = i;
+				}
+
+				else if(dim == 1 && fabs(vi->y - avg) < fabs(vc->y - avg)) {
+					vc = vi;
+					closest_index = i;
+				}
+			}
+		}
+	}
+
+	return closest_index;
 }
