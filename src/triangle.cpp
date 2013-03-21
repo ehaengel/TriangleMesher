@@ -564,70 +564,6 @@ int Triangle::PerformDelaunayFlip(int opposing_vertex) {
 	return true;
 }
 
-//Perform a Delaunay flip with an adjacent triangle
-/*int Triangle::PerformDelaunayFlip(int opposing_vertex) {
-	//Safety test, don't do anything if there is no adjacent triangle
-	Triangle* adj_tri = GetAdjacentTriangle(opposing_vertex);
-	if(adj_tri == NULL)
-		return false;
-
-	unsigned int combined_vertices[4];
-	combined_vertices[0] = GetVertexIndex(0);
-	combined_vertices[1] = GetVertexIndex(1);
-	combined_vertices[2] = GetVertexIndex(2);
-	combined_vertices[3] = 0;
-
-	Triangle* adjacent_triangles[6];
-	adjacent_triangles[0] = GetAdjacentTriangle(0);
-	adjacent_triangles[1] = GetAdjacentTriangle(1);
-	adjacent_triangles[2] = GetAdjacentTriangle(2);
-
-	adjacent_triangles[3] = adj_tri->GetAdjacentTriangle(0);
-	adjacent_triangles[4] = adj_tri->GetAdjacentTriangle(1);
-	adjacent_triangles[5] = adj_tri->GetAdjacentTriangle(2);
-
-	for(int i=0; i<3; i++) {
-		int vertex_in_list = false;
-
-		for(int j=0; j<3; j++) {
-			if(combined_vertices[j] == adj_tri->GetVertexIndex(i)) {
-				vertex_in_list = true;
-				break;
-			}
-		}
-
-		if(vertex_in_list == false) {
-			combined_vertices[3] = adj_tri->GetVertexIndex(i);
-			break;
-		}
-	}
-
-	if(opposing_vertex == 0) {
-		//printf("%u %u %u %u\n", combined_vertices[0], combined_vertices[1], combined_vertices[2], combined_vertices[3]);
-		//printf("Flipping triangles:\n");
-		//printf("%u %u %u\n", GetVertexIndex(0), GetVertexIndex(1), GetVertexIndex(2));
-		//printf("%u %u %u\n\n", adj_tri->GetVertexIndex(0), adj_tri->GetVertexIndex(1), adj_tri->GetVertexIndex(2));
-
-		//Flip around the vertices
-		SetVertex(0, combined_vertices[0]);
-		SetVertex(1, combined_vertices[3]);
-		SetVertex(2, combined_vertices[1]);
-
-		adj_tri->SetVertex(0, combined_vertices[0]);
-		adj_tri->SetVertex(1, combined_vertices[3]);
-		adj_tri->SetVertex(2, combined_vertices[2]);
-	}
-
-
-	else
-		return false;
-
-	OrientVertices();
-	adj_tri->OrientVertices();
-
-	return true;
-}*/
-
 int Triangle::GetCircumcircle(Vector2d& center, double& radius) {
 	//For safety, set some default values
 	center.x = 0.0;
@@ -641,6 +577,29 @@ int Triangle::GetCircumcircle(Vector2d& center, double& radius) {
 	center = *circumcenter;
 	radius = circumradius;
 
+	return true;
+}
+
+int Triangle::GetCentroid(Vector2d& centroid) {
+	centroid.x = 0.0;
+	centroid.y = 0.0;
+
+	int count = 0;
+	for(int i=0; i<3; i++) {
+		Vector2d* pt = GetVertex(i);
+
+		if(pt != NULL) {
+			centroid.x += pt->x;
+			centroid.y += pt->y;
+
+			count++;
+		}
+	}
+
+	if(count == 0)
+		return false;
+
+	centroid /= double(count);
 	return true;
 }
 
@@ -696,6 +655,30 @@ int Triangle::write_svg(FILE* handle, double w, double h) {
 	fprintf(handle, "<polygon points=\"%f,%f %f,%f %f,%f\" ", v0->x, h-v0->y, v1->x, h-v1->y, v2->x, h-v2->y);
 	fprintf(handle, "fill=\"green\" stroke=\"black\" srtoke-width=\"2\" style=\"fill-opacity:0.5\"/>\n");
 
+	//Draw the centroid
+	Vector2d centroid;
+
+	if(GetCentroid(centroid) == true) {
+		double cx = centroid.x;
+		double cy = centroid.y;
+		double r = 3.0;
+		fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"purple\"/>\n", cx, h-cy, r);
+
+		//Draw the connections to adjacent triangles
+		for(int i=0; i<3; i++) {
+			Triangle* adj_tri = GetAdjacentTriangle(i);
+
+			if(adj_tri != NULL) {
+				Vector2d adj_centroid;
+
+				if(adj_tri->GetCentroid(adj_centroid) == true) {
+					fprintf(handle, "<line x1=\"%f\" y1=\"%f\" ", centroid.x, h-centroid.y);
+					fprintf(handle, "x2=\"%f\" y2=\"%f\" stroke-width=\"2\" stroke=\"red\"/>\n", adj_centroid.x, h-adj_centroid.y);
+				}
+			}
+		}
+	}
+
 	/*if(compute_circumcircle() == true) {
 		//Draw the circumcenter
 		double cx = circumcenter->x;
@@ -748,32 +731,46 @@ int Triangle::compute_circumcircle() {
 	return true;
 }
 
-
 TriangleEdge::TriangleEdge() {
-	tindex = 0;
+	tri = NULL;
 	opposing_vertex = 0;
 
 	vertices[0] = 0;
 	vertices[1] = 0;
 }
 
-TriangleEdge::TriangleEdge(unsigned int tindex, int opposing_vertex) {
-	this->tindex = tindex;
-	this->opposing_vertex = opposing_vertex;
+TriangleEdge::TriangleEdge(Triangle* tri, int opposing_vertex) {
+	if(tri == NULL) {
+		this->tri = NULL;
+		this->opposing_vertex = 0;
+	}
 
-	vertices[0] = 0;
-	vertices[1] = 0;
+	else {
+		this->tri = tri;
+		this->opposing_vertex = opposing_vertex;
+
+		//Get the edge opposite vertex 0
+		if(opposing_vertex == 0) {
+			vertices[0] = tri->GetVertexIndex(1);
+			vertices[1] = tri->GetVertexIndex(2);
+		}
+
+		//Get the edge opposite vertex 1
+		else if(opposing_vertex == 1) {
+			vertices[0] = tri->GetVertexIndex(2);
+			vertices[1] = tri->GetVertexIndex(0);
+		}
+
+		//Get the edge opposite vertex 2
+		else if(opposing_vertex == 2) {
+			vertices[0] = tri->GetVertexIndex(0);
+			vertices[1] = tri->GetVertexIndex(1);
+		}
+	}
 }
 
 TriangleEdge::~TriangleEdge() {
 	//Do nothing
-}
-
-int TriangleEdge::operator<(TriangleEdge te) {
-	if(tindex < te.tindex)
-		return true;
-
-	return false;
 }
 
 int TriangleEdge::operator==(TriangleEdge te) {
@@ -787,38 +784,11 @@ int TriangleEdge::operator==(TriangleEdge te) {
 }
 
 TriangleEdge TriangleEdge::operator=(TriangleEdge te) {
-	tindex = te.tindex;
+	tri = te.tri;
 	opposing_vertex = te.opposing_vertex;
 
 	vertices[0] = te.vertices[0];
 	vertices[1] = te.vertices[1];
 
 	return (*this);
-}
-
-int TriangleEdge::GetVertices(Triangle* tri) {
-	//Get the edge opposite vertex 0
-	if(opposing_vertex == 0) {
-		vertices[0] = tri->GetVertexIndex(1);
-		vertices[1] = tri->GetVertexIndex(2);
-	}
-
-	//Get the edge opposite vertex 1
-	else if(opposing_vertex == 1) {
-		vertices[0] = tri->GetVertexIndex(2);
-		vertices[1] = tri->GetVertexIndex(0);
-	}
-
-	//Get the edge opposite vertex 2
-	else if(opposing_vertex == 2) {
-		vertices[0] = tri->GetVertexIndex(0);
-		vertices[1] = tri->GetVertexIndex(1);
-	}
-
-	//Return false if one of the vertices is null
-	if(vertices[0] == 0 || vertices[1] == 0)
-		return false;
-
-	//Otherwise return true
-	return true;
 }

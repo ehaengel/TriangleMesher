@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
 		//return 1;
 	}*/
 
-	triangle_complex->write_svg("out2.svg", 1000.0, 1000.0);
+	triangle_complex->write_svg("out_final.svg", 1000.0, 1000.0);
 	triangle_complex->WriteToFile("test.msh");
 
 	return 0;

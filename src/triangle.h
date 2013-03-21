@@ -79,6 +79,9 @@ public:
 	//Get the circumcircle of this triangle
 	int GetCircumcircle(Vector2d& center, double& radius);
 
+	//Get the centroid of this triangle
+	int GetCentroid(Vector2d& centroid);
+
 	//Switch around the vertices so that they are in ccw order
 	int OrientVertices();
 
@@ -95,6 +98,8 @@ private:
 	////////////////////////////
 	int compute_circumcircle();
 
+	Vector2d compute_centroid();
+
 	//Triangle data
 	VertexList* global_vertex_list;
 
@@ -110,18 +115,15 @@ typedef vector<Triangle*> TriangleList;
 class TriangleEdge {
 public:
 	TriangleEdge();
-	TriangleEdge(unsigned int tindex, int opposing_vertex);
+	TriangleEdge(Triangle* tri, int opposing_vertex);
 	~TriangleEdge();
 
-	int operator<(TriangleEdge te);
 	int operator==(TriangleEdge te);
 
 	TriangleEdge operator=(TriangleEdge te);
 
-	int GetVertices(Triangle* tri);
-
 	//The definition of the edge
-	unsigned int tindex;
+	Triangle* tri;
 	int opposing_vertex;
 
 	//The vertices of the edge in question

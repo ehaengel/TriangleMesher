@@ -21,6 +21,8 @@ public:
 
 	Vector2d operator+=(Vector2d v);
 	Vector2d operator-=(Vector2d v);
+	Vector2d operator*=(double r);
+	Vector2d operator/=(double r);
 
 	//Dot product
 	double operator*(Vector2d v);

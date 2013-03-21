@@ -41,6 +41,18 @@ Vector2d Vector2d::operator-=(Vector2d v) {
 	return (*this);
 }
 
+Vector2d Vector2d::operator*=(double r) {
+	x *= r;
+	y *= r;
+	return (*this);
+}
+
+Vector2d Vector2d::operator/=(double r) {
+	x /= r;
+	y /= r;
+	return (*this);
+}
+
 double Vector2d::operator*(Vector2d v) {
 	return (x*v.x + y*v.y);
 }

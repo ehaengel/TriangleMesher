@@ -141,8 +141,9 @@ int TriangleComplex::RemoveTriangle(unsigned int tindex) {
 
 		//Remove the triangle's edges from the incomplete edge list
 		for(int i=0; i<3; i++) {
-			TriangleEdge te(tindex, i);
-			te.GetVertices(tri);
+			//TriangleEdge te(tindex, i);
+			//te.GetVertices(tri);
+			TriangleEdge te(tri, i);
 
 			for(unsigned int j=0; j<incomplete_edges.size(); j++) {
 				if(incomplete_edges[j] == te) {
@@ -231,25 +232,12 @@ int TriangleComplex::SetIncompleteListsComputed(int incomplete_lists_computed) {
 
 //Meshing functions
 int TriangleComplex::RunTriangleMesher() {
-	/*if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
-		//Split up mesh via kd-tree
-		if(CreateKDTree() == false)
-			return false;
-
-		for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
-			(*kd_leaf_nodes)[i]->RunTriangleMesher();
-			(*kd_leaf_nodes)[i]->RunDelaunayFlips();
-		}
-	}
-
-	else {
-		//Run a simple triangle mesher
-		if(basic_triangle_mesher() == false)
-			return false;
-	}*/
-
 	//If this is the kd_parent
 	if(kd_parent == NULL) {
+		//Keep track of the number of runs
+		char filename[1000];
+		int run_count = 0;
+
 		printf("MESHING THE PARENT NODE!!\n");
 		if(CreateKDTree() == false)
 			return false;
@@ -260,8 +248,12 @@ int TriangleComplex::RunTriangleMesher() {
 			//Mesh all the leaf nodes
 			for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
 				(*kd_leaf_nodes)[i]->RunTriangleMesher();
-				(*kd_leaf_nodes)[i]->RunDelaunayFlips();
+				//(*kd_leaf_nodes)[i]->RunDelaunayFlips();
 			}
+
+			//Write an output file
+			sprintf(filename, "out%d.svg", run_count++);
+			write_svg(filename, 1000, 1000);
 
 			//Combine sibling leaf-nodes
 			vector<TriangleComplex*> new_kd_leaf_nodes;
@@ -281,22 +273,25 @@ int TriangleComplex::RunTriangleMesher() {
 				//Combine the children to create a new leaf node
 				// + This will delete the children from kd_leaf_nodes
 				if(tc_parent->CombineChildren() == false) {
-					printf("FAILED TO COMBINE CHILDREN: %u\n", kd_leaf_nodes->size());
-					return false;
+					new_kd_leaf_nodes.push_back((*kd_leaf_nodes)[0]);
+					//printf("FAILED TO COMBINE CHILDREN: %u\n", kd_leaf_nodes->size());
+					//return false;
 				}
-
-				new_kd_leaf_nodes.push_back(tc_parent);
+				else
+					new_kd_leaf_nodes.push_back(tc_parent);
 			}
 			if(done == true)
 				break;
 
 			*kd_leaf_nodes = new_kd_leaf_nodes;
 			printf("KD LEAF NODE COUNT: %u\n", kd_leaf_nodes->size());
+
+			//Write an output file
+			//sprintf(filename, "out%d.svg", run_count++);
+			//write_svg(filename, 1000, 1000);
 		}
 
-		printf("Number of incomplete vertices: %u\n", incomplete_vertices.size());
 		CombineChildren();
-		printf("Number of incomplete vertices: %u\n", incomplete_vertices.size());
 
 		if(basic_triangle_mesher() == false)
 			return false;
@@ -318,7 +313,7 @@ int TriangleComplex::RunTriangleMesher() {
 }
 
 int TriangleComplex::RunDelaunayFlips() {
-	if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
+	/*if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
 		//Split up mesh via kd-tree
 	}
 
@@ -326,7 +321,10 @@ int TriangleComplex::RunDelaunayFlips() {
 		//Run a simple triangle mesher
 		if(basic_delaunay_flipper() == false)
 			return false;
-	}
+	}*/
+
+	if(basic_delaunay_flipper() == false)
+		return false;
 
 	return true;
 }
@@ -373,7 +371,7 @@ int TriangleComplex::CreateKDTree() {
 				if(vi->x <= vs->x)
 					kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
 
-				if(vi->x > vs->x)
+				else
 					kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
 			}
 
@@ -381,7 +379,7 @@ int TriangleComplex::CreateKDTree() {
 				if(vi->y <= vs->y)
 					kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
 
-				if(vi->y > vs->y)
+				else
 					kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
 			}
 		}
@@ -459,7 +457,11 @@ int TriangleComplex::CombineChildren() {
 		AppendTriangle(kd_child[1]->GetTriangle(i));
 
 	//Get the incomplete vertex lists from the children
-	/*vector<unsigned int> iv0 = kd_child[0]->GetIncompleteVertices();
+	incomplete_vertices.clear();
+	incomplete_vertices_adjacent_triangles.clear();
+	incomplete_edges.clear();
+
+	vector<unsigned int> iv0 = kd_child[0]->GetIncompleteVertices();
 	vector<TriangleList> ivat0 = kd_child[0]->GetIncompleteVerticesAdjacentTriangles();
 
 	for(unsigned int i=0; i<iv0.size(); i++) {
@@ -484,7 +486,7 @@ int TriangleComplex::CombineChildren() {
 	vector<TriangleEdge> ie1 = kd_child[1]->GetIncompleteEdges();
 
 	for(unsigned int i=0; i<ie1.size(); i++)
-		incomplete_edges.push_back(ie1[i]);*/
+		incomplete_edges.push_back(ie1[i]);
 
 	//Remove the children from the kd_leaf_nodes list
 	for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
@@ -506,7 +508,7 @@ int TriangleComplex::CombineChildren() {
 	kd_child[1] = NULL;
 
 	//Set a flag to save some time later
-	//SetIncompleteListsComputed(true);
+	SetIncompleteListsComputed(true);
 
 	//Calculate the time spent combining children
 	clock_t end_time = clock();
@@ -600,6 +602,37 @@ int TriangleComplex::write_svg(FILE* handle, double w, double h, int draw_verts)
 		}
 	}
 
+	//Write the incomplete edges
+	/*for(unsigned int i=0; i<incomplete_edges.size(); i++) {
+		TriangleEdge te = incomplete_edges[i];
+
+		Vector2d* p0 = GetGlobalVertex(te.vertices[0]);
+		Vector2d* p1 = GetGlobalVertex(te.vertices[1]);
+
+		if(p0 == NULL || p1 == NULL)
+			continue;
+
+		fprintf(handle, "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" ", p0->x, h-p0->y, p1->x, h-p1->y);
+		fprintf(handle, "stroke=\"purple\" stroke-width=\"3\"/>\n");
+	}
+
+	//Write the incomplete vertices
+	for(unsigned int i=0; i<incomplete_vertices.size(); i++) {
+		//Skip the first vertex, it is null
+		if(i == 0)
+			continue;
+
+		Vector2d* pt = GetGlobalVertex(incomplete_vertices[i]);
+		if(pt == NULL)
+			continue;
+
+		double cx = pt->x;
+		double cy = pt->y;
+		double r = 3.0;
+
+		fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"red\"/>\n", cx, h-cy, r);
+	}*/
+
 	//Write the kd-tree prism
 	if(kd_prism != NULL)
 		kd_prism->write_svg(handle, w, h);
@@ -660,14 +693,14 @@ int TriangleComplex::free_data() {
 	vertex_list = NULL;
 
 	//Delete the triangle list
-	if(triangle_list) {
+	/*if(triangle_list) {
 		for(unsigned int i=0; i<triangle_list->size(); i++)
 			if((*triangle_list)[i] != NULL)
 				delete (*triangle_list)[i];
 
 		triangle_list->clear();
 		delete triangle_list;
-	}
+	}*/
 	triangle_list = NULL;
 
 	//Clear some lists
@@ -775,6 +808,8 @@ int TriangleComplex::basic_triangle_mesher() {
 		return false;
 	}
 
+	time_t start_time = clock();
+
 	//Counts the number of loops
 	int count = 0;
 
@@ -800,11 +835,13 @@ int TriangleComplex::basic_triangle_mesher() {
 					continue;
 
 				//Next make sure that this vertex is on the correct side of the edge
-				if(GetTriangle(te.tindex)->TestPointEdgeOrientation(te.opposing_vertex, *vj) != -1)
+				//if(GetTriangle(te.tindex)->TestPointEdgeOrientation(te.opposing_vertex, *vj) != -1)
+				if(te.tri->TestPointEdgeOrientation(te.opposing_vertex, *vj) != -1)
 					continue;
 
 				//Make sure the incomplete vertex is not the opposite vertex for our edge
-				if(incomplete_vertices[j] == GetTriangle(te.tindex)->GetVertexIndex(te.opposing_vertex)) {
+				//if(incomplete_vertices[j] == GetTriangle(te.tindex)->GetVertexIndex(te.opposing_vertex)) {
+				if(incomplete_vertices[j] == te.tri->GetVertexIndex(te.opposing_vertex)) {
 					//printf("OPPOSITE VERTEX FAIL\n");
 					continue;
 				}
@@ -889,8 +926,8 @@ int TriangleComplex::basic_triangle_mesher() {
 				}
 
 				//Look at each edge of the new triangle to see if we completed it
-				TriangleEdge new_te(tindex, i);
-				new_te.GetVertices(new_tri);
+				//TriangleEdge new_te(tindex, i);
+				TriangleEdge new_te(new_tri, i);
 
 				int found_edge = false;
 				for(unsigned int k=0; k<incomplete_edges.size(); k++) {
@@ -899,8 +936,10 @@ int TriangleComplex::basic_triangle_mesher() {
 					//Check if this edge has been completed
 					if(new_te == te) {
 						//While we're at it, attach the two triangles along this edge
-						new_tri->SetAdjacentTriangle(i, GetTriangle(te.tindex));
-						GetTriangle(te.tindex)->SetAdjacentTriangle(te.opposing_vertex, new_tri);
+						//new_tri->SetAdjacentTriangle(i, GetTriangle(te.tindex));
+						new_tri->SetAdjacentTriangle(i, te.tri);
+						//GetTriangle(te.tindex)->SetAdjacentTriangle(te.opposing_vertex, new_tri);
+						te.tri->SetAdjacentTriangle(te.opposing_vertex, new_tri);
 
 						//This edge is complete now so remove it from incomplete_edges
 						incomplete_edges.erase(incomplete_edges.begin() + k);
@@ -925,6 +964,9 @@ int TriangleComplex::basic_triangle_mesher() {
 		//sprintf(filename, "run%d.svg", count);
 		//write_svg(filename, 300, 300);
 	}
+
+	time_t end_time = clock();
+	printf("Time spent in basic triangle mesher = %fs\n", double(end_time - start_time) / double(CLOCKS_PER_SEC));
 
 	return true;
 }
@@ -1053,9 +1095,10 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 		//Go through the vertices of this triangle
 		for(int j=0; j<3; j++) {
 			//Manage the incomplete edge list
-			TriangleEdge tej(i, j);
+			//TriangleEdge tej(i, j);
+			TriangleEdge tej(tri, j);
 
-			if(tej.GetVertices(tri) == true) {
+			if(tej.tri != NULL) {
 				vector<TriangleEdge>::iterator find_result;
 				find_result = find(incomplete_edges.begin(), incomplete_edges.end(), tej);
 
@@ -1165,6 +1208,10 @@ int TriangleComplex::basic_delaunay_flipper() {
 
 		for(unsigned int i=0; i<GetTriangleCount(); i++) {
 			Triangle* tri = GetTriangle(i);
+
+			//Skip outer triangles for now
+			if(tri->GetAdjacentTriangleCount() < 3)
+				continue;
 
 			//Go through each adjacent triangle of tri
 			for(int k=0; k<3; k++) {
