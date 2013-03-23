@@ -1177,13 +1177,13 @@ int TriangleComplex::basic_delaunay_flipper() {
 			Triangle* tri = GetTriangle(i);
 
 			//Skip outer triangles for now
-			if(tri->GetAdjacentTriangleCount() < 3)
-				continue;
+			//if(tri->GetAdjacentTriangleCount() < 3)
+			//	continue;
 
 			//Go through each adjacent triangle of tri
 			for(int k=0; k<3; k++) {
-				if(tri->GetAdjacentTriangle(k) != NULL && tri->GetAdjacentTriangle(k)->GetAdjacentTriangleCount() < 3)
-					continue;
+				//if(tri->GetAdjacentTriangle(k) != NULL && tri->GetAdjacentTriangle(k)->GetAdjacentTriangleCount() < 3)
+				//	continue;
 				
 				//Perform a flip if the delaunay condition fails
 				if(tri->TestDelaunay(k) == false) {
