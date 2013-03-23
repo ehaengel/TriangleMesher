@@ -45,6 +45,8 @@ public:
 	int SetAdjacentTriangle(int opposing_vertex, Triangle* tri);
 	Triangle* GetAdjacentTriangle(int opposing_vertex);
 
+	int TestAdjacency(Triangle* tri, int& opposing_vertex, int& tri_opposing_vertex);
+
 	//////////////////////////
 	// Geometric primitives //
 	//////////////////////////

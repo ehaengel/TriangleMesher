@@ -203,6 +203,54 @@ Triangle* Triangle::GetAdjacentTriangle(int opposing_vertex) {
 	return adjacent_triangles[opposing_vertex];
 }
 
+int Triangle::TestAdjacency(Triangle* tri, int& opposing_vertex, int& tri_opposing_vertex) {
+	//See if tri has two vertices in common with this one
+	int vertices_in_common = 0;
+
+	opposing_vertex = -1;
+	tri_opposing_vertex = -1;
+
+	for(int i=0; i<3; i++) {
+		int found_vertex = false;
+
+		for(int j=0; j<3; j++) {
+			if(GetVertex(i) == tri->GetVertex(j)) {
+				found_vertex = true;
+				vertices_in_common++;
+
+				break;
+			}
+		}
+
+		if(found_vertex == false)
+			opposing_vertex = i;
+	}
+
+	for(int i=0; i<3; i++) {
+		int found_vertex = false;
+
+		for(int j=0; j<3; j++) {
+			if(tri->GetVertex(i) == GetVertex(j)) {
+				found_vertex = true;
+				break;
+			}
+		}
+
+		if(found_vertex == false) {
+			tri_opposing_vertex = i;
+			break;
+		}
+	}
+
+	if(vertices_in_common == 2)
+		return true;
+
+	opposing_vertex = -1;
+	tri_opposing_vertex = -1;
+	return false;
+}
+
+
 //Geometric primitives
 int Triangle::TestPointInside(Vector2d pt, bool soft_edges) {
 	//First check if the point is inside the circumcircle for a quick test
@@ -656,7 +704,7 @@ int Triangle::write_svg(FILE* handle, double w, double h) {
 	fprintf(handle, "fill=\"green\" stroke=\"black\" srtoke-width=\"2\" style=\"fill-opacity:0.5\"/>\n");
 
 	//Draw the centroid
-	Vector2d centroid;
+	/*Vector2d centroid;
 
 	if(GetCentroid(centroid) == true) {
 		double cx = centroid.x;
@@ -677,7 +725,7 @@ int Triangle::write_svg(FILE* handle, double w, double h) {
 				}
 			}
 		}
-	}
+	}*/
 
 	/*if(compute_circumcircle() == true) {
 		//Draw the circumcenter

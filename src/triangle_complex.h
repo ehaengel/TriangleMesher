@@ -15,7 +15,7 @@ using namespace std;
 #ifndef TRIANGLE_COMPLEX
 #define TRIANGLE_COMPLEX
 
-#define MAXIMUM_MESH_SIZE	100
+#define MAXIMUM_MESH_SIZE	1000
 
 class TriangleComplex {
 public:
@@ -53,7 +53,6 @@ public:
 
 	vector<unsigned int> GetIncompleteVertices();
 	vector<TriangleList> GetIncompleteVerticesAdjacentTriangles();
-	vector<TriangleEdge> GetIncompleteEdges();
 
 	int SetIncompleteListsComputed(int incomplete_lists_computed);
 
@@ -113,7 +112,7 @@ private:
 	int basic_triangle_mesher();
 
 	int create_seed_triangle();
-	int compute_incomplete_vertices_and_edges();
+	int compute_incomplete_vertices();
 
 	int is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles);
 
@@ -146,8 +145,6 @@ private:
 	//These are used for constructing a mesh
 	vector<unsigned int> incomplete_vertices;
 	vector<TriangleList> incomplete_vertices_adjacent_triangles;
-
-	vector<TriangleEdge> incomplete_edges;
 
 	int incomplete_lists_computed;
 

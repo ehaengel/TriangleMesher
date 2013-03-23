@@ -139,20 +139,6 @@ int TriangleComplex::RemoveTriangle(unsigned int tindex) {
 			}
 		}
 
-		//Remove the triangle's edges from the incomplete edge list
-		for(int i=0; i<3; i++) {
-			//TriangleEdge te(tindex, i);
-			//te.GetVertices(tri);
-			TriangleEdge te(tri, i);
-
-			for(unsigned int j=0; j<incomplete_edges.size(); j++) {
-				if(incomplete_edges[j] == te) {
-					incomplete_edges.erase(incomplete_edges.begin() + j);
-					break;
-				}
-			}
-		}
-
 		//Delete the actual triangle
 		delete (*triangle_list)[tindex];
 	}
@@ -220,10 +206,6 @@ vector<unsigned int> TriangleComplex::GetIncompleteVertices() {
 
 vector<TriangleList> TriangleComplex::GetIncompleteVerticesAdjacentTriangles() {
 	return incomplete_vertices_adjacent_triangles;
-}
-
-vector<TriangleEdge> TriangleComplex::GetIncompleteEdges() {
-	return incomplete_edges;
 }
 
 int TriangleComplex::SetIncompleteListsComputed(int incomplete_lists_computed) {
@@ -459,7 +441,6 @@ int TriangleComplex::CombineChildren() {
 	//Get the incomplete vertex lists from the children
 	incomplete_vertices.clear();
 	incomplete_vertices_adjacent_triangles.clear();
-	incomplete_edges.clear();
 
 	vector<unsigned int> iv0 = kd_child[0]->GetIncompleteVertices();
 	vector<TriangleList> ivat0 = kd_child[0]->GetIncompleteVerticesAdjacentTriangles();
@@ -476,17 +457,6 @@ int TriangleComplex::CombineChildren() {
 		incomplete_vertices.push_back(iv1[i]);
 		incomplete_vertices_adjacent_triangles.push_back(ivat1[i]);
 	}
-
-	//Get the incomplete edge lists from the children
-	vector<TriangleEdge> ie0 = kd_child[0]->GetIncompleteEdges();
-
-	for(unsigned int i=0; i<ie0.size(); i++)
-		incomplete_edges.push_back(ie0[i]);
-
-	vector<TriangleEdge> ie1 = kd_child[1]->GetIncompleteEdges();
-
-	for(unsigned int i=0; i<ie1.size(); i++)
-		incomplete_edges.push_back(ie1[i]);
 
 	//Remove the children from the kd_leaf_nodes list
 	for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
@@ -668,7 +638,6 @@ int TriangleComplex::initialize() {
 	//Clear some lists
 	incomplete_vertices.clear();
 	incomplete_vertices_adjacent_triangles.clear();
-	incomplete_edges.clear();
 
 	incomplete_lists_computed = false;
 
@@ -706,7 +675,6 @@ int TriangleComplex::free_data() {
 	//Clear some lists
 	incomplete_vertices.clear();
 	incomplete_vertices_adjacent_triangles.clear();
-	incomplete_edges.clear();
 
 	//Clean up some kd-tree data
 	if(kd_prism != NULL) {
@@ -803,7 +771,7 @@ int TriangleComplex::basic_triangle_mesher() {
 	}
 
 	//Figure out the list of incomplete vertices and edges
-	if(compute_incomplete_vertices_and_edges() == false) {
+	if(compute_incomplete_vertices() == false) {
 		printf("Error: Could not compute incomplete vertices and edges\n");
 		return false;
 	}
@@ -823,10 +791,22 @@ int TriangleComplex::basic_triangle_mesher() {
 		Triangle* new_tri = new Triangle(global_vertex_list);
 		int found_good_triangle = false;
 
-		//printf("\n\nStarting main loop\n");
-		for(unsigned int i=0; i<incomplete_edges.size(); i++) {
-			//Try to match up this edge with a vertex
-			TriangleEdge te = incomplete_edges[i];
+		for(unsigned int i=0; i<GetTriangleCount(); i++) {
+			Triangle* tri = GetTriangle(i);
+			if(tri == NULL || tri->GetAdjacentTriangleCount() == 3)
+				continue;
+
+			int opposing_vertex = -1;
+
+			for(int j=0; j<3; j++) {
+				if(tri->GetAdjacentTriangle(j) == NULL) {
+					opposing_vertex = j;
+					break;
+				}
+			}
+
+			if(opposing_vertex == -1)
+				continue;
 
 			for(unsigned int j=0; j<incomplete_vertices.size(); j++) {
 				//First make sure this vertex is not degenerate
@@ -835,13 +815,11 @@ int TriangleComplex::basic_triangle_mesher() {
 					continue;
 
 				//Next make sure that this vertex is on the correct side of the edge
-				//if(GetTriangle(te.tindex)->TestPointEdgeOrientation(te.opposing_vertex, *vj) != -1)
-				if(te.tri->TestPointEdgeOrientation(te.opposing_vertex, *vj) != -1)
+				if(tri->TestPointEdgeOrientation(opposing_vertex, *vj) != -1)
 					continue;
 
 				//Make sure the incomplete vertex is not the opposite vertex for our edge
-				//if(incomplete_vertices[j] == GetTriangle(te.tindex)->GetVertexIndex(te.opposing_vertex)) {
-				if(incomplete_vertices[j] == te.tri->GetVertexIndex(te.opposing_vertex)) {
+				if(incomplete_vertices[j] == tri->GetVertexIndex(opposing_vertex)) {
 					//printf("OPPOSITE VERTEX FAIL\n");
 					continue;
 				}
@@ -849,19 +827,23 @@ int TriangleComplex::basic_triangle_mesher() {
 
 				//Create a test triangle
 				new_tri->SetVertex(0, incomplete_vertices[j]);
-				new_tri->SetVertex(1, te.vertices[0]);
-				new_tri->SetVertex(2, te.vertices[1]);
 
-				//printf("AF3\n");
+				if(opposing_vertex == 0) {
+					new_tri->SetVertex(1, tri->GetVertexIndex(2));
+					new_tri->SetVertex(2, tri->GetVertexIndex(1));
+				}
+				else if(opposing_vertex == 1) {
+					new_tri->SetVertex(1, tri->GetVertexIndex(0));
+					new_tri->SetVertex(2, tri->GetVertexIndex(2));
+				}
+				else if(opposing_vertex == 2) {
+					new_tri->SetVertex(1, tri->GetVertexIndex(1));
+					new_tri->SetVertex(2, tri->GetVertexIndex(0));
+				}
 
 				//Try to orient vertices, and if its a degenerate triangle skip it
 				if(new_tri->OrientVertices() == false)
 					continue;
-
-				//Make sure that the new triangle does not violate the delaunay condition
-				//Vector2d* vo = GetTriangle(te.tindex)->GetVertex(te.opposing_vertex);
-				//if(vo != NULL && new_tri->TestPointInsideCircumcircle(*vo) == true)
-				//	continue;
 
 				//Test to see if new_tri overlaps with any vertices
 				int found_vertex_overlap = false;
@@ -904,7 +886,22 @@ int TriangleComplex::basic_triangle_mesher() {
 		if(found_good_triangle) {
 			unsigned int tindex = AppendTriangle(new_tri);
 
-			//Update the incomplete vertex/edge lists
+			//Update triangle adjacencies
+			for(unsigned int i=0; i<GetTriangleCount(); i++) {
+				Triangle* tri = GetTriangle(i);
+				if(tri == NULL || tri->GetAdjacentTriangleCount() == 3)
+					continue;
+
+				int opposing_vertex = -1;
+				int tri_opposing_vertex = -1;
+
+				if(new_tri->TestAdjacency(tri, opposing_vertex, tri_opposing_vertex) == true) {
+					new_tri->SetAdjacentTriangle(opposing_vertex, tri);
+					tri->SetAdjacentTriangle(tri_opposing_vertex, new_tri);
+				}
+			}
+
+			//Update the incomplete vertex lists
 			for(int i=0; i<3; i++) {
 				//Look at each vertex of the new triangle to see if we completed it
 				unsigned int vindex = new_tri->GetVertexIndex(i);
@@ -927,7 +924,7 @@ int TriangleComplex::basic_triangle_mesher() {
 
 				//Look at each edge of the new triangle to see if we completed it
 				//TriangleEdge new_te(tindex, i);
-				TriangleEdge new_te(new_tri, i);
+				/*TriangleEdge new_te(new_tri, i);
 
 				int found_edge = false;
 				for(unsigned int k=0; k<incomplete_edges.size(); k++) {
@@ -948,7 +945,7 @@ int TriangleComplex::basic_triangle_mesher() {
 					}
 				}
 				if(found_edge == false)
-					incomplete_edges.push_back(new_te);
+					incomplete_edges.push_back(new_te);*/
 			}
 
 			//Reset the stop condition
@@ -1068,7 +1065,7 @@ int TriangleComplex::create_seed_triangle() {
 	return true;
 }
 
-int TriangleComplex::compute_incomplete_vertices_and_edges() {
+int TriangleComplex::compute_incomplete_vertices() {
 	//Safety checking
 	if(GetVertexCount() < 4)
 		return false;
@@ -1083,7 +1080,7 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 	//Clear the lists
 	incomplete_vertices.clear();
 	incomplete_vertices_adjacent_triangles.clear();
-	incomplete_edges.clear();
+	//incomplete_edges.clear();
 
 	//All vertices are considered incomplete for now
 	incomplete_vertices = *vertex_list;
@@ -1096,7 +1093,7 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 		for(int j=0; j<3; j++) {
 			//Manage the incomplete edge list
 			//TriangleEdge tej(i, j);
-			TriangleEdge tej(tri, j);
+			/*TriangleEdge tej(tri, j);
 
 			if(tej.tri != NULL) {
 				vector<TriangleEdge>::iterator find_result;
@@ -1109,7 +1106,7 @@ int TriangleComplex::compute_incomplete_vertices_and_edges() {
 				//Otherwise we know this edge is complete so remove it
 				else
 					incomplete_edges.erase(find_result);
-			}
+			}*/
 
 			if(tri->GetVertexIndex(j) != 0) {
 				//Manage the incomplete vertices list
@@ -1215,6 +1212,9 @@ int TriangleComplex::basic_delaunay_flipper() {
 
 			//Go through each adjacent triangle of tri
 			for(int k=0; k<3; k++) {
+				if(tri->GetAdjacentTriangle(k) != NULL && tri->GetAdjacentTriangle(k)->GetAdjacentTriangleCount() < 3)
+					continue;
+				
 				//Perform a flip if the delaunay condition fails
 				if(tri->TestDelaunay(k) == false) {
 					tri->PerformDelaunayFlip(k);
