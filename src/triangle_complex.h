@@ -52,7 +52,7 @@ public:
 	int AppendVertexIndex(unsigned int vindex);
 
 	vector<unsigned int> GetIncompleteVertices();
-	vector<TriangleList> GetIncompleteVerticesAdjacentTriangles();
+	vector<double> GetIncompleteVerticesAngles();
 
 	int SetIncompleteListsComputed(int incomplete_lists_computed);
 
@@ -144,7 +144,7 @@ private:
 
 	//These are used for constructing a mesh
 	vector<unsigned int> incomplete_vertices;
-	vector<TriangleList> incomplete_vertices_adjacent_triangles;
+	vector<double> incomplete_vertices_angles;
 
 	int incomplete_lists_computed;
 

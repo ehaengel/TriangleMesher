@@ -129,16 +129,6 @@ int TriangleComplex::RemoveTriangle(unsigned int tindex) {
 			}
 		}
 
-		//Remove the triangle from any incomplete vertices
-		for(unsigned int i=0; i<incomplete_vertices_adjacent_triangles.size(); i++) {
-			for(unsigned int j=0; j<incomplete_vertices_adjacent_triangles[i].size(); j++) {
-				if(incomplete_vertices_adjacent_triangles[i][j] == GetTriangle(tindex)) {
-					incomplete_vertices_adjacent_triangles[i].erase(incomplete_vertices_adjacent_triangles[i].begin() + j);
-					break;
-				}
-			}
-		}
-
 		//Delete the actual triangle
 		delete (*triangle_list)[tindex];
 	}
@@ -204,8 +194,8 @@ vector<unsigned int> TriangleComplex::GetIncompleteVertices() {
 	return incomplete_vertices;
 }
 
-vector<TriangleList> TriangleComplex::GetIncompleteVerticesAdjacentTriangles() {
-	return incomplete_vertices_adjacent_triangles;
+vector<double> TriangleComplex::GetIncompleteVerticesAngles() {
+	return incomplete_vertices_angles;
 }
 
 int TriangleComplex::SetIncompleteListsComputed(int incomplete_lists_computed) {
@@ -440,22 +430,26 @@ int TriangleComplex::CombineChildren() {
 
 	//Get the incomplete vertex lists from the children
 	incomplete_vertices.clear();
-	incomplete_vertices_adjacent_triangles.clear();
+	incomplete_vertices_angles.clear();
 
 	vector<unsigned int> iv0 = kd_child[0]->GetIncompleteVertices();
-	vector<TriangleList> ivat0 = kd_child[0]->GetIncompleteVerticesAdjacentTriangles();
+	vector<double> iva0 = kd_child[0]->GetIncompleteVerticesAngles();
+	//vector<TriangleList> ivat0 = kd_child[0]->GetIncompleteVerticesAdjacentTriangles();
 
 	for(unsigned int i=0; i<iv0.size(); i++) {
 		incomplete_vertices.push_back(iv0[i]);
-		incomplete_vertices_adjacent_triangles.push_back(ivat0[i]);
+		incomplete_vertices_angles.push_back(iva0[i]);
+		//incomplete_vertices_adjacent_triangles.push_back(ivat0[i]);
 	}
 
 	vector<unsigned int> iv1 = kd_child[1]->GetIncompleteVertices();
-	vector<TriangleList> ivat1 = kd_child[1]->GetIncompleteVerticesAdjacentTriangles();
+	vector<double> iva1 = kd_child[1]->GetIncompleteVerticesAngles();
+	//vector<TriangleList> ivat1 = kd_child[1]->GetIncompleteVerticesAdjacentTriangles();
 
 	for(unsigned int i=0; i<iv1.size(); i++) {
 		incomplete_vertices.push_back(iv1[i]);
-		incomplete_vertices_adjacent_triangles.push_back(ivat1[i]);
+		incomplete_vertices_angles.push_back(iva1[i]);
+		//incomplete_vertices_adjacent_triangles.push_back(ivat1[i]);
 	}
 
 	//Remove the children from the kd_leaf_nodes list
@@ -637,7 +631,7 @@ int TriangleComplex::initialize() {
 
 	//Clear some lists
 	incomplete_vertices.clear();
-	incomplete_vertices_adjacent_triangles.clear();
+	incomplete_vertices_angles.clear();
 
 	incomplete_lists_computed = false;
 
@@ -674,7 +668,7 @@ int TriangleComplex::free_data() {
 
 	//Clear some lists
 	incomplete_vertices.clear();
-	incomplete_vertices_adjacent_triangles.clear();
+	incomplete_vertices_angles.clear();
 
 	//Clean up some kd-tree data
 	if(kd_prism != NULL) {
@@ -772,7 +766,7 @@ int TriangleComplex::basic_triangle_mesher() {
 
 	//Figure out the list of incomplete vertices and edges
 	if(compute_incomplete_vertices() == false) {
-		printf("Error: Could not compute incomplete vertices and edges\n");
+		printf("Error: Could not compute incomplete vertices\n");
 		return false;
 	}
 
@@ -813,6 +807,13 @@ int TriangleComplex::basic_triangle_mesher() {
 				Vector2d* vj = GetGlobalVertex(incomplete_vertices[j]);
 				if(vj == NULL)
 					continue;
+
+			/*for(unsigned int j=0; j<GetVertexCount(); j++) {
+				//Check if this vertex is complete
+				if(fabs(GetVertexAngle(j) - 3.141592) < 1e-5)
+					continue;
+
+				Vector2d* vj = GetVertex(j);*/
 
 				//Next make sure that this vertex is on the correct side of the edge
 				if(tri->TestPointEdgeOrientation(opposing_vertex, *vj) != -1)
@@ -901,51 +902,26 @@ int TriangleComplex::basic_triangle_mesher() {
 				}
 			}
 
-			//Update the incomplete vertex lists
+			//Update the incomplete vertices
 			for(int i=0; i<3; i++) {
-				//Look at each vertex of the new triangle to see if we completed it
 				unsigned int vindex = new_tri->GetVertexIndex(i);
+				double angle = 0.0;
 
-				for(unsigned int k=0; k<incomplete_vertices.size(); k++) {
-					if(vindex == incomplete_vertices[k]) {
-						//Add a new adjacent triangle to this vertex
-						incomplete_vertices_adjacent_triangles[k].push_back(new_tri);
-						TriangleList adjacent_triangles = incomplete_vertices_adjacent_triangles[k];
+				if(new_tri->GetVertexAngle(i, angle) == false)
+					continue;
 
-						//Check if the new triangle completes this vertex
-						if(is_vertex_complete(vindex, adjacent_triangles) == true) {
-							incomplete_vertices.erase(incomplete_vertices.begin() + k);
-							incomplete_vertices_adjacent_triangles.erase(incomplete_vertices_adjacent_triangles.begin() + k);
+				for(unsigned int j=0; j<incomplete_vertices.size(); j++) {
+					if(vindex == incomplete_vertices[j]) {
+						incomplete_vertices_angles[j] += angle;
+
+						if(incomplete_vertices_angles[j] >= 6.28318) {
+							incomplete_vertices.erase(incomplete_vertices.begin() + j);
+							incomplete_vertices_angles.erase(incomplete_vertices_angles.begin() + j);
 						}
 
 						break;
 					}
 				}
-
-				//Look at each edge of the new triangle to see if we completed it
-				//TriangleEdge new_te(tindex, i);
-				/*TriangleEdge new_te(new_tri, i);
-
-				int found_edge = false;
-				for(unsigned int k=0; k<incomplete_edges.size(); k++) {
-					TriangleEdge te = incomplete_edges[k];
-
-					//Check if this edge has been completed
-					if(new_te == te) {
-						//While we're at it, attach the two triangles along this edge
-						//new_tri->SetAdjacentTriangle(i, GetTriangle(te.tindex));
-						new_tri->SetAdjacentTriangle(i, te.tri);
-						//GetTriangle(te.tindex)->SetAdjacentTriangle(te.opposing_vertex, new_tri);
-						te.tri->SetAdjacentTriangle(te.opposing_vertex, new_tri);
-
-						//This edge is complete now so remove it from incomplete_edges
-						incomplete_edges.erase(incomplete_edges.begin() + k);
-						found_edge = true;
-						break;
-					}
-				}
-				if(found_edge == false)
-					incomplete_edges.push_back(new_te);*/
 			}
 
 			//Reset the stop condition
@@ -1079,42 +1055,33 @@ int TriangleComplex::compute_incomplete_vertices() {
 
 	//Clear the lists
 	incomplete_vertices.clear();
-	incomplete_vertices_adjacent_triangles.clear();
-	//incomplete_edges.clear();
+	incomplete_vertices_angles.clear();
+
+	//incomplete_vertices_adjacent_triangles.clear();
 
 	//All vertices are considered incomplete for now
 	incomplete_vertices = *vertex_list;
-	incomplete_vertices_adjacent_triangles.resize(GetVertexCount());
+	incomplete_vertices_angles.resize(GetVertexCount());
+
+	//incomplete_vertices_adjacent_triangles.resize(GetVertexCount());
 
 	for(unsigned int i=0; i<GetTriangleCount(); i++) {
 		Triangle* tri = GetTriangle(i);
 
 		//Go through the vertices of this triangle
 		for(int j=0; j<3; j++) {
-			//Manage the incomplete edge list
-			//TriangleEdge tej(i, j);
-			/*TriangleEdge tej(tri, j);
-
-			if(tej.tri != NULL) {
-				vector<TriangleEdge>::iterator find_result;
-				find_result = find(incomplete_edges.begin(), incomplete_edges.end(), tej);
-
-				//If edge j was not in the incomplete edge list append it
-				if(find_result == incomplete_edges.end())
-					incomplete_edges.push_back(tej);
-
-				//Otherwise we know this edge is complete so remove it
-				else
-					incomplete_edges.erase(find_result);
-			}*/
-
 			if(tri->GetVertexIndex(j) != 0) {
 				//Manage the incomplete vertices list
 				unsigned int vindex = tri->GetVertexIndex(j);
 
+				double angle = 0.0;
+				if(tri->GetVertexAngle(j, angle) == false)
+					continue;
+
 				for(unsigned int k=0; k<incomplete_vertices.size(); k++) {
 					if(incomplete_vertices[k] == vindex) {
-						incomplete_vertices_adjacent_triangles[k].push_back(tri);
+						incomplete_vertices_angles[k] += angle;
+						//incomplete_vertices_adjacent_triangles[k].push_back(tri);
 						break;
 					}
 				}
@@ -1125,18 +1092,21 @@ int TriangleComplex::compute_incomplete_vertices() {
 	//Screen out the complete vertices from the incomplete ones
 	int removed_vertex = false;
 	for(unsigned int i=0; i<incomplete_vertices.size(); i++) {
-		if(removed_vertex == true) {
-			i--;
+		if(i == 1 && removed_vertex == true) {
 			removed_vertex = false;
+			i--;
 		}
 
-		unsigned int vindex = incomplete_vertices[i];
-		TriangleList tri_list = incomplete_vertices_adjacent_triangles[i];
-
-		if(is_vertex_complete(vindex, tri_list)) {
+		if(incomplete_vertices_angles[i] >= 6.28318) {
 			incomplete_vertices.erase(incomplete_vertices.begin() + i);
-			incomplete_vertices_adjacent_triangles.erase(incomplete_vertices_adjacent_triangles.begin() + i);
+			incomplete_vertices_angles.erase(incomplete_vertices_angles.begin() + i);
+
 			removed_vertex = true;
+		}
+
+		if(i > 0 && removed_vertex == true) {
+			removed_vertex = false;
+			i--;
 		}
 	}
 

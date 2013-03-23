@@ -113,6 +113,10 @@ double Vector2d::dot(Vector2d v) {
 	return (x*v.x + y*v.y);
 }
 
+double Vector2d::angle(Vector2d v) {
+	return acos(dot(v) / (mag() * v.mag()));
+}
+
 void Vector2d::print() {
 	printf("<%f, %f>\n", x, y);
 }

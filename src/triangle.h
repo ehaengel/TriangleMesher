@@ -84,6 +84,9 @@ public:
 	//Get the centroid of this triangle
 	int GetCentroid(Vector2d& centroid);
 
+	//Get the angle made by the edges at a given vertex
+	int GetVertexAngle(int vertex, double& angle);
+
 	//Switch around the vertices so that they are in ccw order
 	int OrientVertices();
 

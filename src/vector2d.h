@@ -44,6 +44,7 @@ public:
 	double distance2(Vector2d);
 
 	double dot(Vector2d);
+	double angle(Vector2d);
 
 	Vector2d normalize();
 	Vector2d reverse();

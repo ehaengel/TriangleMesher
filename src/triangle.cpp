@@ -651,6 +651,35 @@ int Triangle::GetCentroid(Vector2d& centroid) {
 	return true;
 }
 
+int Triangle::GetVertexAngle(int vertex, double& angle) {
+	Vector2d* v0 = GetVertex(vertex);
+	Vector2d* v1 = NULL;
+	Vector2d* v2 = NULL;
+
+	if(vertex == 0) {
+		v1 = GetVertex(1);
+		v2 = GetVertex(2);
+	}
+	else if(vertex == 1) {
+		v1 = GetVertex(2);
+		v2 = GetVertex(0);
+	}
+	else if(vertex == 2) {
+		v1 = GetVertex(0);
+		v2 = GetVertex(1);
+	}
+
+	angle = 0.0;
+	if(v0 == NULL || v1 == NULL || v2 == NULL)
+		return false;
+
+	Vector2d edge1 = ((*v1) - (*v0));
+	Vector2d edge2 = ((*v2) - (*v0));
+
+	angle = edge1.angle(edge2);
+	return true;
+}
+
 int Triangle::OrientVertices() {
 	//Get the vertices of this triangle
 	Vector2d* v0 = GetVertex(0);
