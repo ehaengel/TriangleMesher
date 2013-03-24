@@ -218,14 +218,18 @@ int TriangleComplex::RunTriangleMesher() {
 
 		while(kd_leaf_nodes->size() > 1) {
 			//Mesh all the leaf nodes
+
+			#pragma omp parallel for
 			for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
+				printf("Starting to mesh leaf node %u\n", i);
 				(*kd_leaf_nodes)[i]->RunTriangleMesher();
-				//(*kd_leaf_nodes)[i]->RunDelaunayFlips();
+
+				printf("Done meshing leaf node %u\n\n", i);
 			}
 
 			//Write an output file
-			sprintf(filename, "out%d.svg", run_count++);
-			write_svg(filename, 1000, 1000);
+			//sprintf(filename, "out%d.svg", run_count++);
+			//write_svg(filename, 1000, 1000);
 
 			//Combine sibling leaf-nodes
 			vector<TriangleComplex*> new_kd_leaf_nodes;
@@ -467,6 +471,10 @@ int TriangleComplex::CombineChildren() {
 		}
 	}
 
+	//Erase the data of the children
+	delete kd_child[0];
+	delete kd_child[1];
+
 	//Stop pointing to the children
 	kd_child[0] = NULL;
 	kd_child[1] = NULL;
@@ -560,7 +568,7 @@ int TriangleComplex::write_svg(FILE* handle, double w, double h, int draw_verts)
 
 			double cx = (*global_vertex_list)[i]->x;
 			double cy = (*global_vertex_list)[i]->y;
-			double r = 3.0;
+			double r = 1.0;
 
 			fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"blue\"/>\n", cx, h-cy, r);
 		}

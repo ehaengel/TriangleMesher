@@ -12,10 +12,12 @@ using namespace std;
 #include "triangle.h"
 #include "prism.h"
 
+#include <omp.h>
+
 #ifndef TRIANGLE_COMPLEX
 #define TRIANGLE_COMPLEX
 
-#define MAXIMUM_MESH_SIZE	1000
+#define MAXIMUM_MESH_SIZE	500
 
 class TriangleComplex {
 public:
