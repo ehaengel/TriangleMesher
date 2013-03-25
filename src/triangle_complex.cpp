@@ -200,6 +200,8 @@ vector<double> TriangleComplex::GetIncompleteVerticesAngles() {
 
 int TriangleComplex::SetIncompleteListsComputed(int incomplete_lists_computed) {
 	this->incomplete_lists_computed = incomplete_lists_computed;
+
+	return true;
 }
 
 //Meshing functions
@@ -220,7 +222,7 @@ int TriangleComplex::RunTriangleMesher() {
 			//Mesh all the leaf nodes
 
 			#pragma omp parallel for
-			for(unsigned int i=0; i<kd_leaf_nodes->size(); i++) {
+			for(int i=0; i<kd_leaf_nodes->size(); i++) {
 				printf("Starting to mesh leaf node %u\n", i);
 				(*kd_leaf_nodes)[i]->RunTriangleMesher();
 
