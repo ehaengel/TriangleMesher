@@ -474,8 +474,11 @@ int TriangleComplex::CombineChildren() {
 	}
 
 	//Erase the data of the children
-	delete kd_child[0];
-	delete kd_child[1];
+	if(kd_child[0] != NULL)
+		delete kd_child[0];
+
+	if(kd_child[1] != NULL)
+		delete kd_child[1];
 
 	//Stop pointing to the children
 	kd_child[0] = NULL;
