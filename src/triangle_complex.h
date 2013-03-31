@@ -7,6 +7,10 @@
 #include <algorithm>
 using namespace std;
 
+//XML i/o code
+#include "SimpleXML/src/xml_document.h"
+
+//Triangulation algorithm related code
 #include "utility.h"
 #include "vector2d.h"
 #include "triangle.h"
