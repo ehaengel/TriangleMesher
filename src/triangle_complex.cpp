@@ -28,8 +28,53 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 	free_data();
 	initialize();
 
+	XML_Document* xml_document = new XML_Document;
+	if(xml_document->LoadFromFile(filename) == false) {
+		printf("Error loading the mesh file\n");
+
+		delete xml_document;
+		return false;
+	}
+
+	vector<XML_TreeNode*> vertexlists;
+	xml_document->GetHeadNode()->GetTreeNodesOfTagName("vertexlist", vertexlists);
+
+	for(unsigned int i=0; i<vertexlists.size(); i++) {
+		XML_TreeNode* vertexlist = vertexlists[i];
+
+		vector<XML_Tag*> new_vertex_tags;
+		vertexlist->GetTagsOfTagName("vertex", new_vertex_tags);
+
+		for(unsigned int j=0; j<new_vertex_tags.size(); j++) {
+			XML_Tag* new_vertex_tag = new_vertex_tags[j];
+
+			//Get the vertex information from this tag
+			string vx_str = new_vertex_tag->GetAttributeValue("x");
+			if(vx_str == "") {
+				delete xml_document;
+				return false;
+			}
+
+			string vy_str = new_vertex_tag->GetAttributeValue("y");
+			if(vy_str == "") {
+				delete xml_document;
+				return false;
+			}
+
+			Vector2d* new_vertex = new Vector2d;
+			new_vertex->x = atof(vx_str.c_str());
+			new_vertex->y = atof(vy_str.c_str());
+
+			global_vertex_list->push_back(new_vertex);
+			AppendVertexIndex(global_vertex_list->size()-1);
+		}
+	}
+
+	delete xml_document;
+	return true;
+
 	//Try to open the file for reading
-	FILE* handle = fopen(filename, "r");
+	/*FILE* handle = fopen(filename, "r");
 	if(!handle)
 		return false;
 
@@ -46,7 +91,7 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 		fgets(buffer, 4096, handle);
 	}
 
-	return true;
+	return true;*/
 }
 
 int TriangleComplex::WriteToFile(const char* filename) {
