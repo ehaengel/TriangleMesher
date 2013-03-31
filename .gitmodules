@@ -1,0 +1,3 @@
+[submodule "src/SimpleXML"]
+	path = src/SimpleXML
+	url = git@github.com:shenron7/SimpleXML.git
