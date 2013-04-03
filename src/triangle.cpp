@@ -49,6 +49,8 @@ int TestLineSegmentOverlap(Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2) {
 	return false;
 }
 
+//Initialize the global triangle count
+unsigned int Triangle::global_triangle_count = 0;
 
 Triangle::Triangle(VertexList* global_vertex_list) {
 	this->global_vertex_list = global_vertex_list;
@@ -63,6 +65,10 @@ Triangle::Triangle(VertexList* global_vertex_list) {
 
 	circumcenter = NULL;
 	circumradius = 0.0;
+
+	//Establish the local index
+	global_triangle_count++;
+	local_index = global_triangle_count;
 }
 
 Triangle::~Triangle() {
@@ -250,6 +256,9 @@ int Triangle::TestAdjacency(Triangle* tri, int& opposing_vertex, int& tri_opposi
 	return false;
 }
 
+unsigned int Triangle::GetLocalIndex() {
+	return local_index;
+}
 
 //Geometric primitives
 int Triangle::TestPointInside(Vector2d pt, bool soft_edges) {

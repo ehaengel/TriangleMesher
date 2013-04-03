@@ -1,7 +1,7 @@
 CFLAGS = 
 MAINFLAGS = -L. -ltriangle -lsimplexml
 
-all: clean main
+all: clean all_objects main
 
 all_objects:
 	g++ src/utility.cpp -c -o utility.o $(CFLAGS)
@@ -13,7 +13,7 @@ all_objects:
 	ar -cr libtriangle.a *.o
 	rm -f *.o
 
-main: all_objects
+main:
 	g++ -fopenmp src/main.cpp -o main $(MAINFLAGS) $(CFLAGS)
 
 clean:

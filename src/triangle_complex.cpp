@@ -138,12 +138,30 @@ int TriangleComplex::WriteToFile(const char* filename) {
 			continue;
 
 		XML_TreeNode* triangle_node = trianglelist_node->CreateChildTagOpenClosed("triangle");
-
 		XML_Tag* triangle_node_tag = triangle_node->GetStartTag();
-		triangle_node_tag->AppendTagAttribute("index", i);
-		triangle_node_tag->AppendTagAttribute("n0", tri->GetVertexIndex(0));
-		triangle_node_tag->AppendTagAttribute("n1", tri->GetVertexIndex(1));
-		triangle_node_tag->AppendTagAttribute("n2", tri->GetVertexIndex(2));
+
+		triangle_node_tag->AppendTagAttribute("index", tri->GetLocalIndex());
+
+		for(int j=0; j<3; j++) {
+			char buffer[1000];
+			sprintf(buffer, "n%d", j);
+
+			triangle_node_tag->AppendTagAttribute(string(buffer), tri->GetVertexIndex(j));
+		}
+
+		for(int j=0; j<3; j++) {
+			char buffer[1000];
+			sprintf(buffer, "a%d", j);
+
+			if(tri->GetAdjacentTriangle(j) == NULL)
+				triangle_node_tag->AppendTagAttribute(string(buffer), 0);
+
+			else {
+				unsigned int adj_local_index = tri->GetAdjacentTriangle(j)->GetLocalIndex();
+				triangle_node_tag->AppendTagAttribute(string(buffer), adj_local_index);
+			}
+		}
+
 	}
 
 	int ret = xml_document->WriteToFile(filename);

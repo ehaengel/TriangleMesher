@@ -47,6 +47,9 @@ public:
 
 	int TestAdjacency(Triangle* tri, int& opposing_vertex, int& tri_opposing_vertex);
 
+	//Local index
+	unsigned int GetLocalIndex();
+
 	//////////////////////////
 	// Geometric primitives //
 	//////////////////////////
@@ -113,6 +116,10 @@ private:
 
 	Vector2d* circumcenter;
 	double circumradius;
+
+	//This is used to give each triangle a unique identifier
+	static unsigned int global_triangle_count;
+	unsigned int local_index;
 };
 
 typedef vector<Triangle*> TriangleList;
