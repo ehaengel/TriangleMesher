@@ -36,7 +36,7 @@ public:
 
 	int LoadFromFile(const char* filename);
 	int WriteToFile(const char* filename);
-	int WriteToFile(FILE* handle);
+	//int WriteToFile(FILE* handle);
 
 	///////////////////////////////
 	// Data management functions //
@@ -104,12 +104,14 @@ private:
 	int initialize();
 	int free_data();
 
-	//File reading functions
-	int load_vertices(FILE* handle);
-	int load_triangles(FILE* handle);
+	int reset_global_vertex_list();
 
-	int load_vertex_tag(char* str, Vector2d* &res);
-	int load_triangle_tag(char* str, Triangle* &res);
+	//File reading functions
+	int load_vertices(FILE* handle); //OUTDATED
+	int load_triangles(FILE* handle); //OUTDATED
+
+	int load_vertex_tag(char* str, Vector2d* &res); //OUTDATED
+	int load_triangle_tag(char* str, Triangle* &res); //OUTDATED
 
 	//Get a vertex referenced by the internal vertex list
 	Vector2d* get_vertex(unsigned int index);
@@ -120,7 +122,7 @@ private:
 	int create_seed_triangle();
 	int compute_incomplete_vertices();
 
-	int is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles);
+	int is_vertex_complete(unsigned int vindex, TriangleList adjacent_triangles); //OUTDATED
 
 	//The most basic delaunay flipper
 	int basic_delaunay_flipper();

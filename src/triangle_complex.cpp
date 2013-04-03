@@ -3,8 +3,12 @@
 TriangleComplex::TriangleComplex() {
 	//Create the global vertex list from scratch
 	// + The 0th vertex is always a NULL vertex
-	global_vertex_list = new VertexList;
-	global_vertex_list->push_back(NULL);
+	//global_vertex_list = new VertexList;
+	//global_vertex_list->push_back(NULL);
+
+	//Create the global vertex list
+	global_vertex_list = NULL;
+	reset_global_vertex_list();
 
 	//Initialize all the other variables
 	initialize();
@@ -28,6 +32,10 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 	free_data();
 	initialize();
 
+	//Reset the global vertex list
+	reset_global_vertex_list();
+
+	//Open the mesh file as an XML document
 	XML_Document* xml_document = new XML_Document;
 	if(xml_document->LoadFromFile(filename) == false) {
 		printf("Error loading the mesh file\n");
@@ -36,6 +44,7 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 		return false;
 	}
 
+	//Load in the vertices from the mesh file
 	vector<XML_TreeNode*> vertexlists;
 	xml_document->GetHeadNode()->GetTreeNodesOfTagName("vertexlist", vertexlists);
 
@@ -70,28 +79,24 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 		}
 	}
 
-	delete xml_document;
-	return true;
+	//Load in the edges from the mesh file
 
-	//Try to open the file for reading
-	/*FILE* handle = fopen(filename, "r");
-	if(!handle)
-		return false;
+	//Load in the triangles from the mesh file
+	vector<XML_TreeNode*> trianglelists;
+	xml_document->GetHeadNode()->GetTreeNodesOfTagName("trianglelist", trianglelists);
 
-	char buffer[4096];
-	fgets(buffer, 4096, handle);
+	for(unsigned int i=0; i<trianglelists.size(); i++) {
+		XML_TreeNode* trianglelist = trianglelists[i];
 
-	while(!feof(handle)) {
-		if(strstr(buffer, "<vertexlist>"))
-			load_vertices(handle);
+		vector<XML_Tag*> new_triangle_tags;
+		trianglelist->GetTagsOfTagName("triangle", new_triangle_tags);
 
-		//else if(strstr(buffer, "<trianglelist>"))
-		//	load_triangles(handle);
-
-		fgets(buffer, 4096, handle);
+		for(unsigned int j=0; j<new_triangle_tags.size(); j++) {
+		}
 	}
 
-	return true;*/
+	delete xml_document;
+	return true;
 }
 
 int TriangleComplex::WriteToFile(const char* filename) {
@@ -99,8 +104,55 @@ int TriangleComplex::WriteToFile(const char* filename) {
 	if(global_vertex_list->size() <= 1)
 		return false;
 
+	//Open the output file as an xml document
+	XML_Document* xml_document = new XML_Document;
+
+	XML_TreeNode* head_node = xml_document->GetHeadNode();
+
+	//Create a vertexlist
+	XML_TreeNode* vertexlist_node = head_node->CreateChildTagPair("vertexlist");
+
+	//Write the vertices to the file
+	for(unsigned int i=0; i<GetVertexCount(); i++) {
+		Vector2d* pt = GetVertex(i);
+
+		if(pt == NULL)
+			continue;
+
+		XML_TreeNode* vertex_node = vertexlist_node->CreateChildTagOpenClosed("vertex");
+
+		XML_Tag* vertex_node_tag = vertex_node->GetStartTag();
+		vertex_node_tag->AppendTagAttribute("index", GetVertexIndex(i));
+		vertex_node_tag->AppendTagAttribute("x", pt->x);
+		vertex_node_tag->AppendTagAttribute("y", pt->y);
+	}
+
+	//Create a trianglelist
+	XML_TreeNode* trianglelist_node = head_node->CreateChildTagPair("trianglelist");
+
+	//Write the triangles to the file
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		if(tri == NULL)
+			continue;
+
+		XML_TreeNode* triangle_node = trianglelist_node->CreateChildTagOpenClosed("triangle");
+
+		XML_Tag* triangle_node_tag = triangle_node->GetStartTag();
+		triangle_node_tag->AppendTagAttribute("index", i);
+		triangle_node_tag->AppendTagAttribute("n0", tri->GetVertexIndex(0));
+		triangle_node_tag->AppendTagAttribute("n1", tri->GetVertexIndex(1));
+		triangle_node_tag->AppendTagAttribute("n2", tri->GetVertexIndex(2));
+	}
+
+	int ret = xml_document->WriteToFile(filename);
+
+	delete xml_document;
+	return ret;
+
 	//Open the file for writing
-	FILE* handle = fopen(filename, "w");
+	/*FILE* handle = fopen(filename, "w");
 	if(!handle)
 		return false;
 
@@ -127,10 +179,10 @@ int TriangleComplex::WriteToFile(const char* filename) {
 
 	//Close up and return
 	fclose(handle);
-	return true;
+	return true;*/
 }
 
-int TriangleComplex::WriteToFile(FILE* handle) {
+/*int TriangleComplex::WriteToFile(FILE* handle) {
 	if(triangle_list->size() == 0)
 		return true;
 
@@ -147,7 +199,7 @@ int TriangleComplex::WriteToFile(FILE* handle) {
 	fprintf(handle, "</trianglelist>\n\n");
 
 	return true;
-}
+}*/
 
 //Data management functions
 unsigned int TriangleComplex::GetTriangleCount() {
@@ -252,7 +304,7 @@ int TriangleComplex::SetIncompleteListsComputed(int incomplete_lists_computed) {
 //Meshing functions
 int TriangleComplex::RunTriangleMesher() {
 	//If this is the kd_parent
-	if(kd_parent == NULL) {
+	if(kd_parent == NULL && global_vertex_list->size() >= MAXIMUM_MESH_SIZE) {
 		//Keep track of the number of runs
 		char filename[1000];
 		int run_count = 0;
@@ -741,6 +793,21 @@ int TriangleComplex::free_data() {
 	return true;
 }
 
+int TriangleComplex::reset_global_vertex_list() {
+	if(global_vertex_list != NULL) {
+		for(unsigned int i=0; i<global_vertex_list->size(); i++) {
+			if((*global_vertex_list)[i] != NULL)
+				delete (*global_vertex_list)[i];
+		}
+		delete global_vertex_list;
+	}
+
+	global_vertex_list = new VertexList;
+	global_vertex_list->push_back(NULL);
+
+	return true;
+}
+
 int TriangleComplex::load_vertices(FILE* handle) {
 	//Read in starting from a <vertexlist> tag
 	char buffer[4096];
@@ -811,7 +878,7 @@ int TriangleComplex::load_triangle_tag(char* str, Triangle* &res) {
 
 int TriangleComplex::basic_triangle_mesher() {
 	//Safety test
-	if(GetVertexCount() < 4) {
+	if(GetVertexCount() < 3) {
 		printf("Error: Not enough vertices\n");
 		return false;
 	}
@@ -848,7 +915,7 @@ int TriangleComplex::basic_triangle_mesher() {
 			if(tri == NULL || tri->GetAdjacentTriangleCount() == 3)
 				continue;
 
-			int opposing_vertex = -1;
+			/*int opposing_vertex = -1;
 
 			for(int j=0; j<3; j++) {
 				if(tri->GetAdjacentTriangle(j) == NULL) {
@@ -858,82 +925,79 @@ int TriangleComplex::basic_triangle_mesher() {
 			}
 
 			if(opposing_vertex == -1)
-				continue;
+				continue;*/
 
-			for(unsigned int j=0; j<incomplete_vertices.size(); j++) {
-				//First make sure this vertex is not degenerate
-				Vector2d* vj = GetGlobalVertex(incomplete_vertices[j]);
-				if(vj == NULL)
+			for(int opposing_vertex=0; opposing_vertex<3; opposing_vertex++) {
+				if(tri->GetAdjacentTriangle(opposing_vertex) != NULL)
 					continue;
 
-			/*for(unsigned int j=0; j<GetVertexCount(); j++) {
-				//Check if this vertex is complete
-				if(fabs(GetVertexAngle(j) - 3.141592) < 1e-5)
-					continue;
-
-				Vector2d* vj = GetVertex(j);*/
-
-				//Next make sure that this vertex is on the correct side of the edge
-				if(tri->TestPointEdgeOrientation(opposing_vertex, *vj) != -1)
-					continue;
-
-				//Make sure the incomplete vertex is not the opposite vertex for our edge
-				if(incomplete_vertices[j] == tri->GetVertexIndex(opposing_vertex)) {
-					//printf("OPPOSITE VERTEX FAIL\n");
-					continue;
-				}
-
-
-				//Create a test triangle
-				new_tri->SetVertex(0, incomplete_vertices[j]);
-
-				if(opposing_vertex == 0) {
-					new_tri->SetVertex(1, tri->GetVertexIndex(2));
-					new_tri->SetVertex(2, tri->GetVertexIndex(1));
-				}
-				else if(opposing_vertex == 1) {
-					new_tri->SetVertex(1, tri->GetVertexIndex(0));
-					new_tri->SetVertex(2, tri->GetVertexIndex(2));
-				}
-				else if(opposing_vertex == 2) {
-					new_tri->SetVertex(1, tri->GetVertexIndex(1));
-					new_tri->SetVertex(2, tri->GetVertexIndex(0));
-				}
-
-				//Try to orient vertices, and if its a degenerate triangle skip it
-				if(new_tri->OrientVertices() == false)
-					continue;
-
-				//Test to see if new_tri overlaps with any vertices
-				int found_vertex_overlap = false;
-				for(unsigned int k=0; k<GetVertexCount(); k++) {
-					Vector2d* vk = GetVertex(k);
-					if(vk == NULL)
+				for(unsigned int j=0; j<incomplete_vertices.size(); j++) {
+					//First make sure this vertex is not degenerate
+					Vector2d* vj = GetGlobalVertex(incomplete_vertices[j]);
+					if(vj == NULL)
 						continue;
 
-					if(new_tri->TestPointInside(*vk, true) == true) {
-						found_vertex_overlap = true;
+					//Next make sure that this vertex is on the correct side of the edge
+					if(tri->TestPointEdgeOrientation(opposing_vertex, *vj) != -1)
+						continue;
+
+					//Make sure the incomplete vertex is not the opposite vertex for our edge
+					if(incomplete_vertices[j] == tri->GetVertexIndex(opposing_vertex)) {
+						//printf("OPPOSITE VERTEX FAIL\n");
+						continue;
+					}
+
+					//Create a test triangle
+					new_tri->SetVertex(0, incomplete_vertices[j]);
+
+					if(opposing_vertex == 0) {
+						new_tri->SetVertex(1, tri->GetVertexIndex(2));
+						new_tri->SetVertex(2, tri->GetVertexIndex(1));
+					}
+					else if(opposing_vertex == 1) {
+						new_tri->SetVertex(1, tri->GetVertexIndex(0));
+						new_tri->SetVertex(2, tri->GetVertexIndex(2));
+					}
+					else if(opposing_vertex == 2) {
+						new_tri->SetVertex(1, tri->GetVertexIndex(1));
+						new_tri->SetVertex(2, tri->GetVertexIndex(0));
+					}
+
+					//Try to orient the vertices, and if its a degenerate triangle skip it
+					if(new_tri->OrientVertices() == false)
+						continue;
+
+					//Test to see if new_tri overlaps with any vertices
+					int found_vertex_overlap = false;
+					for(unsigned int k=0; k<GetVertexCount(); k++) {
+						Vector2d* vk = GetVertex(k);
+						if(vk == NULL)
+							continue;
+
+						if(new_tri->TestPointInside(*vk, true) == true) {
+							found_vertex_overlap = true;
+							break;
+						}
+					}
+					if(found_vertex_overlap == true)
+						continue;
+
+					//Test to see if new_tri overlaps with any of the other triangles
+					int found_triangle_overlap = false;
+					for(unsigned int k=0; k<GetTriangleCount(); k++) {
+						Triangle* tri = GetTriangle(k);
+
+						if(new_tri->TestOverlap(tri)) {
+							found_triangle_overlap = true;
+							break;
+						}
+					}
+
+					//We have found a good triangle
+					if(found_triangle_overlap == false) {
+						found_good_triangle = true;
 						break;
 					}
-				}
-				if(found_vertex_overlap == true)
-					continue;
-
-				//Test to see if new_tri overlaps with any of the other triangles
-				int found_triangle_overlap = false;
-				for(unsigned int k=0; k<GetTriangleCount(); k++) {
-					Triangle* tri = GetTriangle(k);
-
-					if(new_tri->TestOverlap(tri)) {
-						found_triangle_overlap = true;
-						break;
-					}
-				}
-
-				//We have found a good triangle
-				if(found_triangle_overlap == false) {
-					found_good_triangle = true;
-					break;
 				}
 			}
 
@@ -996,6 +1060,8 @@ int TriangleComplex::basic_triangle_mesher() {
 		//write_svg(filename, 300, 300);
 	}
 
+	printf("incomplete vertices left over: %u\n", incomplete_vertices.size());
+
 	time_t end_time = clock();
 	printf("Time spent in basic triangle mesher = %fs\n", double(end_time - start_time) / double(CLOCKS_PER_SEC));
 
@@ -1004,7 +1070,7 @@ int TriangleComplex::basic_triangle_mesher() {
 
 int TriangleComplex::create_seed_triangle() {
 	//Safety check
-	if(GetVertexCount() < 4)
+	if(GetVertexCount() < 3)
 		return false;
 
 	if(GetTriangleCount() == 0) {
@@ -1041,7 +1107,6 @@ int TriangleComplex::create_seed_triangle() {
 		//Safety check
 		if(GetVertexIndex(0) == 0 || GetVertexIndex(1) == 0)
 			return false;
-
 
 		//Create a triangle
 		Triangle* tri = new Triangle(global_vertex_list);
@@ -1101,7 +1166,7 @@ int TriangleComplex::create_seed_triangle() {
 
 int TriangleComplex::compute_incomplete_vertices() {
 	//Safety checking
-	if(GetVertexCount() < 4)
+	if(GetVertexCount() < 3)
 		return false;
 
 	//Don't compute anything if the lists have already been computed
@@ -1213,16 +1278,9 @@ int TriangleComplex::is_vertex_complete(unsigned int vindex, TriangleList adjace
 }
 
 int TriangleComplex::basic_delaunay_flipper() {
-	//Safety test
-	if(GetVertexCount() < 4) {
-		printf("Error: Not enough vertices\n");
-		return false;
-	}
-
-	if(GetTriangleCount() < 2) {
-		printf("Error: Not enough triangles\n");
-		return false;
-	}
+	//If there are less than two triangles there are no flips to perform
+	if(GetTriangleCount() < 2)
+		return true;
 
 	int flip_count = 0;
 	int maximum_flip_count = 100;
