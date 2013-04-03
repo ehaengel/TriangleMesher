@@ -826,74 +826,7 @@ int TriangleComplex::reset_global_vertex_list() {
 	return true;
 }
 
-int TriangleComplex::load_vertices(FILE* handle) {
-	//Read in starting from a <vertexlist> tag
-	char buffer[4096];
-	fgets(buffer, 4096, handle);
-
-	while(!feof(handle) && strstr(buffer, "</vertexlist>") == NULL) {
-		Vector2d* new_vertex = NULL;
-		if(load_vertex_tag(buffer, new_vertex) == true) {
-			global_vertex_list->push_back(new_vertex);
-			AppendVertexIndex(global_vertex_list->size()-1);
-		}
-
-		//vertexlist_block += buffer;
-		fgets(buffer, 4096, handle);
-	}
-
-	return true;
-}
-
-int TriangleComplex::load_triangles(FILE* handle) {
-	//Read in starting from a <trianglelist> tag
-	
-	return true;
-}
-
-int TriangleComplex::load_vertex_tag(char* str, Vector2d* &res) {
-	//Initialize res to null for now
-	res = NULL;
-
-	char* p = strstr(str, "<vertex ");
-	if(p == NULL)
-		return false;
-
-	double vx = 0.0;
-	double vy = 0.0;
-
-	//Load in the x coordinate
-	char* px = strstr(p, " x");
-	if(px == NULL)
-		return false;
-
-	while(*px && !isAlphaNumeric(*px, true)) px++;
-	if(px == NULL)
-		return false;
-
-	vx = atof(px);
-
-	//Load in the y coordinate
-	char* py = strstr(p, " y");
-	if(py == NULL)
-		return false;
-
-	while(*py && !isAlphaNumeric(*py, true)) py++;
-	if(py == NULL)
-		return false;
-
-	vy = atof(py);
-
-	//We were able to load in all the necessary data so create a new vector
-	res = new Vector2d(vx, vy);
-	return true;
-}
-
-int TriangleComplex::load_triangle_tag(char* str, Triangle* &res) {
-
-	return true;
-}
-
+//The most basic triangle mesher
 int TriangleComplex::basic_triangle_mesher() {
 	//Safety test
 	if(GetVertexCount() < 3) {
