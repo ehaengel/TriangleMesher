@@ -49,6 +49,7 @@ public:
 
 	//Local index
 	unsigned int GetLocalIndex();
+	int SetLocalIndex(unsigned int local_index);
 
 	//////////////////////////
 	// Geometric primitives //

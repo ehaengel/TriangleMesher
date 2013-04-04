@@ -58,8 +58,12 @@ int main(int argc, char** argv) {
 		scanf("%s", buffer);
 	}
 	else {
-		if(argc > 2 && strcmp(argv[1], "-m") == 0)
-			triangle_complex->LoadFromFile(argv[2]);
+		if(argc > 2 && strcmp(argv[1], "-m") == 0) {
+			if(triangle_complex->LoadFromFile(argv[2]) == false) {
+				printf("Error loading file\n");
+				return 1;
+			}
+		}
 
 		else if(argc > 2 && strcmp(argv[1], "-r") == 0)
 			triangle_complex->generate_random_vertex_list(atoi(argv[2]), 0.0, 1000.0);

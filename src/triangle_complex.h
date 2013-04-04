@@ -46,6 +46,10 @@ public:
 	Triangle* GetTriangle(unsigned int tindex);
 
 	int RemoveTriangle(unsigned int tindex);
+	int RemoveAllTriangles();
+
+	int DeleteTriangle(unsigned int tindex);
+
 	unsigned int AppendTriangle(Triangle* tri);
 
 	unsigned int GetVertexCount();
@@ -85,6 +89,9 @@ public:
 	int SetKDTreePrisms(PrismList* kd_tree_prisms);
 
 	TriangleComplex* GetKDParent();
+
+	int AppendBridgeTriangleIndex(unsigned int local_index);
+	int IsBridgeTriangleIndex(unsigned int local_index);
 
 	/////////////////////////
 	// Debugging functions //
@@ -126,6 +133,9 @@ private:
 	//Get the index of the vertex which is center-most in a given direction
 	unsigned int compute_centermost_vertex(int dim);
 
+	//Figure out the adjacencies for all the triangles
+	int compute_triangle_adjacencies();
+
 	//////////////////////
 	// Global mesh data //
 	//////////////////////
@@ -158,6 +168,8 @@ private:
 
 	Prism* kd_prism;
 	int kd_splitting_dimension;
+
+	vector<unsigned int> kd_bridge_triangles;
 };
 
 #endif

@@ -58,6 +58,25 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			XML_Tag* new_vertex_tag = new_vertex_tags[j];
 
 			//Get the vertex information from this tag
+			string index_str = new_vertex_tag->GetAttributeValue("index");
+			if(index_str == "") {
+				printf("HERE!!\n");
+				delete xml_document;
+				return false;
+			}
+
+			unsigned int index = (unsigned int) atoi(index_str.c_str());
+			if(index < global_vertex_list->size()) {
+				Vector2d* pt = GetGlobalVertex(index);
+
+				if(pt != NULL) {
+					printf("The same vertex is defined twice\n");
+
+					delete xml_document;
+					return false;
+				}
+			}
+
 			string vx_str = new_vertex_tag->GetAttributeValue("x");
 			if(vx_str == "") {
 				delete xml_document;
@@ -74,8 +93,12 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			new_vertex->x = atof(vx_str.c_str());
 			new_vertex->y = atof(vy_str.c_str());
 
-			global_vertex_list->push_back(new_vertex);
-			AppendVertexIndex(global_vertex_list->size()-1);
+			//new_vertices[index] = new_vertex;
+			if(global_vertex_list->size() <= index)
+				global_vertex_list->resize(index+1, NULL);
+
+			(*global_vertex_list)[index] = new_vertex;
+			AppendVertexIndex(index);
 		}
 	}
 
@@ -92,7 +115,62 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 		trianglelist->GetTagsOfTagName("triangle", new_triangle_tags);
 
 		for(unsigned int j=0; j<new_triangle_tags.size(); j++) {
+			XML_Tag* triangle_tag = new_triangle_tags[j];
+
+			unsigned int index = 0;
+			string index_str = triangle_tag->GetAttributeValue("index");
+			if(index_str != "")
+				index = (unsigned int) atoi(index_str.c_str());
+
+			unsigned int n0 = 0;
+			unsigned int n1 = 0;
+			unsigned int n2 = 0;
+
+			string n0_str = triangle_tag->GetAttributeValue("n0");
+			if(n0_str != "") n0 = (unsigned int) atoi(n0_str.c_str());
+
+			string n1_str = triangle_tag->GetAttributeValue("n1");
+			if(n1_str != "") n1 = (unsigned int) atoi(n1_str.c_str());
+
+			string n2_str = triangle_tag->GetAttributeValue("n2");
+			if(n2_str != "") n2 = (unsigned int) atoi(n2_str.c_str());
+
+			if(n0 == 0 || n1 == 0 || n2 == 0) {
+				delete xml_document;
+				return false;
+			}
+
+			unsigned int a0 = 0;
+			unsigned int a1 = 0;
+			unsigned int a2 = 0;
+
+			string a0_str = triangle_tag->GetAttributeValue("a0");
+			if(a0_str != "") a0 = (unsigned int) atoi(a0_str.c_str());
+
+			string a1_str = triangle_tag->GetAttributeValue("a1");
+			if(a1_str != "") a1 = (unsigned int) atoi(a1_str.c_str());
+
+			string a2_str = triangle_tag->GetAttributeValue("a2");
+			if(a2_str != "") a2 = (unsigned int) atoi(a2_str.c_str());
+
+			//Now that all the data is loaded, create a new triangle
+			Triangle* new_tri = new Triangle(global_vertex_list);
+
+			if(index != 0)
+				new_tri->SetLocalIndex(index);
+
+			new_tri->SetVertex(0, n0);
+			new_tri->SetVertex(1, n1);
+			new_tri->SetVertex(2, n2);
+
+			AppendTriangle(new_tri);
 		}
+	}
+
+	//Fix the triangle adjacencies
+	if(compute_triangle_adjacencies() == false) {
+		delete xml_document;
+		return false;
 	}
 
 	delete xml_document;
@@ -229,6 +307,21 @@ Triangle* TriangleComplex::GetTriangle(unsigned int tindex) {
 }
 
 int TriangleComplex::RemoveTriangle(unsigned int tindex) {
+	if(tindex >= triangle_list->size())
+		return false;
+
+	triangle_list->erase(triangle_list->begin() + tindex);
+
+	return true;
+}
+
+int TriangleComplex::RemoveAllTriangles() {
+	triangle_list->clear();
+
+	return true;
+}
+
+int TriangleComplex::DeleteTriangle(unsigned int tindex) {
 	//Safety check
 	if(tindex >= triangle_list->size())
 		return false;
@@ -456,27 +549,73 @@ int TriangleComplex::CreateKDTree() {
 	kd_child[0] = new TriangleComplex(global_vertex_list);
 	kd_child[1] = new TriangleComplex(global_vertex_list);
 
+	//Divide up the vertices
 	for(unsigned int i=0; i<GetVertexCount(); i++) {
 		Vector2d* vi = GetVertex(i);
+		if(vi == NULL)
+			continue;
 
-		if(vi != NULL) {
-			if(kd_splitting_dimension == 0) {
-				if(vi->x <= vs->x)
-					kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
+		if(kd_splitting_dimension == 0) {
+			if(vi->x <= vs->x)
+				kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
 
-				else
-					kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
-			}
+			else
+				kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
+		}
 
-			else if(kd_splitting_dimension == 1) {
-				if(vi->y <= vs->y)
-					kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
+		else if(kd_splitting_dimension == 1) {
+			if(vi->y <= vs->y)
+				kd_child[0]->AppendVertexIndex(GetVertexIndex(i));
 
-				else
-					kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
-			}
+			else
+				kd_child[1]->AppendVertexIndex(GetVertexIndex(i));
 		}
 	}
+
+	//Divide up the triangles
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL)
+			continue;
+
+		int added_to_zero = false;
+		int added_to_one = false;
+
+		for(int j=0; j<3; j++) {
+			Vector2d* pt = tri->GetVertex(j);
+			if(pt != NULL) {
+				if(kd_splitting_dimension == 0) {
+					if(added_to_zero == false && pt->x <= vs->x) {
+						kd_child[0]->AppendTriangle(tri);
+						added_to_zero = true;
+					}
+					else if(added_to_one == false && pt->x > vs->x) {
+						kd_child[1]->AppendTriangle(tri);
+						added_to_one = true;
+					}
+				}
+				if(kd_splitting_dimension == 1) {
+					if(added_to_zero == false && pt->y <= vs->y) {
+						kd_child[0]->AppendTriangle(tri);
+						added_to_zero = true;
+					}
+					else if(added_to_one == false && pt->y > vs->y) {
+						kd_child[1]->AppendTriangle(tri);
+						added_to_one = true;
+					}
+				}
+			}
+		}
+
+		//This is a bridge triangle
+		if(added_to_zero == true && added_to_one == true) {
+			kd_child[0]->AppendBridgeTriangleIndex(tri->GetLocalIndex());
+			kd_child[1]->AppendBridgeTriangleIndex(tri->GetLocalIndex());
+		}
+	}
+
+	//Remove all the triangles from this complex
+	RemoveAllTriangles();
 
 	vs->print();
 	printf("%u %u\n", kd_child[0]->GetVertexCount(), kd_child[1]->GetVertexCount());
@@ -543,11 +682,21 @@ int TriangleComplex::CombineChildren() {
 	clock_t start_time = clock();
 
 	//Get all the triangles from the children
-	for(unsigned int i=0; i<kd_child[0]->GetTriangleCount(); i++)
-		AppendTriangle(kd_child[0]->GetTriangle(i));
+	for(unsigned int i=0; i<kd_child[0]->GetTriangleCount(); i++) {
+		Triangle* tri = kd_child[0]->GetTriangle(i);
+		if(tri == NULL)
+			continue;
 
-	for(unsigned int i=0; i<kd_child[1]->GetTriangleCount(); i++)
-		AppendTriangle(kd_child[1]->GetTriangle(i));
+		AppendTriangle(tri);
+	}
+
+	for(unsigned int i=0; i<kd_child[1]->GetTriangleCount(); i++) {
+		Triangle* tri = kd_child[1]->GetTriangle(i);
+		if(tri == NULL || kd_child[1]->IsBridgeTriangleIndex(tri->GetLocalIndex()))
+			continue;
+
+		AppendTriangle(tri);
+	}
 
 	//Get the incomplete vertex lists from the children
 	incomplete_vertices.clear();
@@ -644,6 +793,19 @@ int TriangleComplex::SetKDTreePrisms(PrismList* kd_tree_prisms) {
 
 TriangleComplex* TriangleComplex::GetKDParent() {
 	return kd_parent;
+}
+
+int TriangleComplex::AppendBridgeTriangleIndex(unsigned int local_index) {
+	kd_bridge_triangles.push_back(local_index);
+	return true;
+}
+
+int TriangleComplex::IsBridgeTriangleIndex(unsigned int local_index) {
+	for(unsigned int i=0; i<kd_bridge_triangles.size(); i++)
+		if(kd_bridge_triangles[i] == local_index)
+			return true;
+
+	return false;
 }
 
 
@@ -774,6 +936,8 @@ int TriangleComplex::initialize() {
 	kd_prism = NULL;
 	kd_splitting_dimension = 0;
 
+	kd_bridge_triangles.clear();
+
 	return true;
 }
 
@@ -808,6 +972,8 @@ int TriangleComplex::free_data() {
 	if(kd_parent == NULL)
 		delete kd_tree_prisms;
 
+	kd_bridge_triangles.clear();
+
 	return true;
 }
 
@@ -833,6 +999,8 @@ int TriangleComplex::basic_triangle_mesher() {
 		printf("Error: Not enough vertices\n");
 		return false;
 	}
+
+	printf("Starting with %u triangles\n", GetTriangleCount());
 
 	//If necessary create a seed triangle
 	if(create_seed_triangle() == false) {
@@ -1243,23 +1411,22 @@ int TriangleComplex::basic_delaunay_flipper() {
 		for(unsigned int i=0; i<GetTriangleCount(); i++) {
 			Triangle* tri = GetTriangle(i);
 
-			//Skip outer triangles for now
-			//if(tri->GetAdjacentTriangleCount() < 3)
-			//	continue;
+			//Skip bridge triangles for flipping
+			if(tri == NULL || IsBridgeTriangleIndex(tri->GetLocalIndex()) == true)
+				continue;
 
 			//Go through each adjacent triangle of tri
 			for(int k=0; k<3; k++) {
-				//if(tri->GetAdjacentTriangle(k) != NULL && tri->GetAdjacentTriangle(k)->GetAdjacentTriangleCount() < 3)
-				//	continue;
+				Triangle* adj_tri = tri->GetAdjacentTriangle(k);
+
+				//Skip bridge triangles for flipping
+				if(adj_tri == NULL || IsBridgeTriangleIndex(adj_tri->GetLocalIndex()) == true)
+					continue;
 				
 				//Perform a flip if the delaunay condition fails
 				if(tri->TestDelaunay(k) == false) {
 					tri->PerformDelaunayFlip(k);
 					flip_performed = true;
-					//printf("PERFORMED A FLIP\n");
-					//char filename[1000];
-					//sprintf(filename, "run%d.svg", flip_count++);
-					//write_svg(filename, 1000, 1000);
 				}
 			}
 		}
@@ -1384,4 +1551,40 @@ unsigned int TriangleComplex::compute_centermost_vertex(int dim) {
 	}
 
 	return closest_index;
+}
+
+int TriangleComplex::compute_triangle_adjacencies() {
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		if(tri == NULL)
+			continue;
+
+		for(int j=0; j<3; j++) {
+			if(tri->GetAdjacentTriangleCount() == 3)
+				continue;
+
+			for(int k=0; k<GetTriangleCount(); k++) {
+				if(k == i)
+					continue;
+
+				Triangle* adj_tri = GetTriangle(k);
+				if(adj_tri == NULL || adj_tri->GetAdjacentTriangleCount() == 3)
+					continue;
+
+				int opposing_vertex = -1;
+				int adj_opposing_vertex = -1;
+
+				if(tri->TestAdjacency(adj_tri, opposing_vertex, adj_opposing_vertex) == true) {
+					tri->SetAdjacentTriangle(opposing_vertex, adj_tri);
+					adj_tri->SetAdjacentTriangle(adj_opposing_vertex, tri);
+				}
+
+				if(tri->GetAdjacentTriangleCount() == 3)
+					break;
+			}
+		}
+	}
+
+	return true;
 }

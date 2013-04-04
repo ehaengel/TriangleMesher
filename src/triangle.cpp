@@ -260,6 +260,15 @@ unsigned int Triangle::GetLocalIndex() {
 	return local_index;
 }
 
+int Triangle::SetLocalIndex(unsigned int local_index) {
+	this->local_index = local_index;
+
+	if(local_index >= global_triangle_count)
+		global_triangle_count = local_index;
+
+	return true;
+}
+
 //Geometric primitives
 int Triangle::TestPointInside(Vector2d pt, bool soft_edges) {
 	//First check if the point is inside the circumcircle for a quick test
