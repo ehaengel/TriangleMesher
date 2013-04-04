@@ -108,6 +108,18 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 	vector<XML_TreeNode*> trianglelists;
 	xml_document->GetHeadNode()->GetTreeNodesOfTagName("trianglelist", trianglelists);
 
+	unsigned int cur_triangle_count = GetTriangleCount();
+	unsigned int cur_triangles_loaded = 0;
+
+	unsigned int total_triangles = GetTriangleCount();
+	for(unsigned int i=0; i<trianglelists.size(); i++) {
+		XML_TreeNode* trianglelist = trianglelists[i];
+
+		vector<XML_Tag*> new_triangle_tags;
+		total_triangles += trianglelist->CountTagsOfTagName("triangle");
+	}
+	triangle_list->resize(total_triangles, NULL);
+
 	for(unsigned int i=0; i<trianglelists.size(); i++) {
 		XML_TreeNode* trianglelist = trianglelists[i];
 
@@ -140,7 +152,7 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 				return false;
 			}
 
-			unsigned int a0 = 0;
+			/*unsigned int a0 = 0;
 			unsigned int a1 = 0;
 			unsigned int a2 = 0;
 
@@ -151,7 +163,7 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			if(a1_str != "") a1 = (unsigned int) atoi(a1_str.c_str());
 
 			string a2_str = triangle_tag->GetAttributeValue("a2");
-			if(a2_str != "") a2 = (unsigned int) atoi(a2_str.c_str());
+			if(a2_str != "") a2 = (unsigned int) atoi(a2_str.c_str());*/
 
 			//Now that all the data is loaded, create a new triangle
 			Triangle* new_tri = new Triangle(global_vertex_list);
@@ -163,7 +175,8 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			new_tri->SetVertex(1, n1);
 			new_tri->SetVertex(2, n2);
 
-			AppendTriangle(new_tri);
+			SetTriangle(cur_triangle_count + cur_triangles_loaded, new_tri);
+			cur_triangles_loaded++;
 		}
 	}
 
@@ -306,6 +319,21 @@ Triangle* TriangleComplex::GetTriangle(unsigned int tindex) {
 	return (*triangle_list)[tindex];
 }
 
+int TriangleComplex::SetTriangle(unsigned int tindex, Triangle* tri) {
+	if(tindex >= triangle_list->size())
+		return false;
+
+	(*triangle_list)[tindex] = tri;
+	return true;
+}
+
+unsigned int TriangleComplex::AppendTriangle(Triangle* tri) {
+	unsigned int tindex = triangle_list->size();
+	triangle_list->push_back(tri);
+
+	return tindex;
+}
+
 int TriangleComplex::RemoveTriangle(unsigned int tindex) {
 	if(tindex >= triangle_list->size())
 		return false;
@@ -345,13 +373,6 @@ int TriangleComplex::DeleteTriangle(unsigned int tindex) {
 	triangle_list->erase(triangle_list->begin() + tindex);
 
 	return true;
-}
-
-unsigned int TriangleComplex::AppendTriangle(Triangle* tri) {
-	unsigned int tindex = triangle_list->size();
-	triangle_list->push_back(tri);
-
-	return tindex;
 }
 
 unsigned int TriangleComplex::GetVertexCount() {

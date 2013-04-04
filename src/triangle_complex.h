@@ -45,12 +45,13 @@ public:
 	unsigned int GetTriangleCount();
 	Triangle* GetTriangle(unsigned int tindex);
 
+	int SetTriangle(unsigned int tindex, Triangle* tri);
+	unsigned int AppendTriangle(Triangle* tri);
+
 	int RemoveTriangle(unsigned int tindex);
 	int RemoveAllTriangles();
 
 	int DeleteTriangle(unsigned int tindex);
-
-	unsigned int AppendTriangle(Triangle* tri);
 
 	unsigned int GetVertexCount();
 	unsigned int GetVertexIndex(unsigned int vertex);
