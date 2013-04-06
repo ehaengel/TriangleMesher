@@ -104,6 +104,7 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 
 	//Load in the edges from the mesh file
 
+	printf("Starting to load triangles\n");
 	//Load in the triangles from the mesh file
 	vector<XML_TreeNode*> trianglelists;
 	xml_document->GetHeadNode()->GetTreeNodesOfTagName("trianglelist", trianglelists);
@@ -131,8 +132,14 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 
 			unsigned int index = 0;
 			string index_str = triangle_tag->GetAttributeValue("index");
-			if(index_str != "")
+			if(index_str != "") {
 				index = (unsigned int) atoi(index_str.c_str());
+
+				if(index >= total_triangles || GetTriangle(index) != NULL) {
+					delete xml_document;
+					return false;
+				}
+			}
 
 			unsigned int n0 = 0;
 			unsigned int n1 = 0;
@@ -152,7 +159,39 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 				return false;
 			}
 
-			/*unsigned int a0 = 0;
+			//Now that all the data is loaded, create a new triangle
+			Triangle* new_tri = new Triangle(global_vertex_list);
+
+			//if(index != 0)
+			new_tri->SetLocalIndex(index);
+
+			new_tri->SetVertex(0, n0);
+			new_tri->SetVertex(1, n1);
+			new_tri->SetVertex(2, n2);
+
+			//SetTriangle(cur_triangle_count + cur_triangles_loaded, new_tri);
+			SetTriangle(index, new_tri);
+			cur_triangles_loaded++;
+		}
+	}
+
+	printf("Starting to load adjacency\n");
+	//Load in the triangle adjacency information
+	for(unsigned int i=0; i<trianglelists.size(); i++) {
+		XML_TreeNode* trianglelist = trianglelists[i];
+
+		vector<XML_Tag*> new_triangle_tags;
+		trianglelist->GetTagsOfTagName("triangle", new_triangle_tags);
+
+		for(unsigned int j=0; j<new_triangle_tags.size(); j++) {
+			XML_Tag* triangle_tag = new_triangle_tags[j];
+
+			unsigned int index = 0;
+			string index_str = triangle_tag->GetAttributeValue("index");
+			if(index_str != "")
+				index = (unsigned int) atoi(index_str.c_str());
+
+			unsigned int a0 = 0;
 			unsigned int a1 = 0;
 			unsigned int a2 = 0;
 
@@ -163,29 +202,37 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			if(a1_str != "") a1 = (unsigned int) atoi(a1_str.c_str());
 
 			string a2_str = triangle_tag->GetAttributeValue("a2");
-			if(a2_str != "") a2 = (unsigned int) atoi(a2_str.c_str());*/
+			if(a2_str != "") a2 = (unsigned int) atoi(a2_str.c_str());
 
-			//Now that all the data is loaded, create a new triangle
-			Triangle* new_tri = new Triangle(global_vertex_list);
+			if(a0 >= total_triangles || a1 >= total_triangles || a2 >= total_triangles) {
+				delete xml_document;
+				return false;
+			}
 
-			if(index != 0)
-				new_tri->SetLocalIndex(index);
+			Triangle* tri = GetTriangle(index);
+			if(tri == NULL) {
+				delete xml_document;
+				return false;
+			}
 
-			new_tri->SetVertex(0, n0);
-			new_tri->SetVertex(1, n1);
-			new_tri->SetVertex(2, n2);
+			Triangle* adj_tri0 = GetTriangle(a0);
+			Triangle* adj_tri1 = GetTriangle(a1);
+			Triangle* adj_tri2 = GetTriangle(a2);
 
-			SetTriangle(cur_triangle_count + cur_triangles_loaded, new_tri);
-			cur_triangles_loaded++;
+			tri->SetAdjacentTriangle(0, adj_tri0);
+			tri->SetAdjacentTriangle(1, adj_tri1);
+			tri->SetAdjacentTriangle(2, adj_tri2);
 		}
 	}
 
+	printf("Fixing adjacencies\n");
 	//Fix the triangle adjacencies
 	if(compute_triangle_adjacencies() == false) {
 		delete xml_document;
 		return false;
 	}
 
+	printf("DONE loading file\n");
 	delete xml_document;
 	return true;
 }
@@ -505,6 +552,15 @@ int TriangleComplex::RunTriangleMesher() {
 
 		if(basic_delaunay_flipper() == false)
 			return false;
+
+		//Reset the local indices of all triangles
+		unsigned int index = 0;
+		for(unsigned int i=0; i<GetTriangleCount(); i++) {
+			Triangle* tri = GetTriangle(i);
+
+			if(tri != NULL)
+				tri->SetLocalIndex(index++);
+		}
 	}
 
 	//Otherwise
