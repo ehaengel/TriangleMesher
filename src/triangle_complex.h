@@ -62,6 +62,8 @@ public:
 	int SetVertexIndex(unsigned int vertex, unsigned int vindex);
 	int AppendVertexIndex(unsigned int vindex);
 
+	int GenerateRandomGrid(double xmin, double xmax, double ymin, double ymax, unsigned int vertex_count);
+
 	vector<unsigned int> GetIncompleteVertices();
 	vector<double> GetIncompleteVerticesAngles();
 

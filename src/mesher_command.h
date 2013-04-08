@@ -22,6 +22,13 @@ public:
 	MesherCommand();
 	~MesherCommand();
 
+	//File i/o function
+	int LoadFromTagData(XML_Tag* mesh_command_tag);
+
+	//Debugging function
+	int print();
+
+
 	/////////////////////////////
 	// The Mesher Command Type //
 	/////////////////////////////
@@ -62,7 +69,7 @@ public:
 	int use_kd_tree;
 
 	//Load/Save Mesh From/To File options
-	const char* filename;
+	char filename[1000];
 
 	//Append Vertex options
 	Vector2d vertex;

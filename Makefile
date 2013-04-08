@@ -1,4 +1,4 @@
-CFLAGS = 
+CFLAGS = -O3
 MAINFLAGS = -L. -ltriangle -lsimplexml
 
 all: clean all_objects main
@@ -11,7 +11,7 @@ all_objects:
 
 	g++ -fopenmp src/triangle_complex.cpp -c -o triangle_complex.o $(CFLAGS)
 
-	g++ src/mesher_command.cpp -c -o mesher_command.o $(CFLAGS)
+	g++ -fopenmp src/mesher_command.cpp -c -o mesher_command.o $(CFLAGS)
 	g++ -fopenmp src/triangle_mesher.cpp -c -o triangle_mesher.o $(CFLAGS)
 
 	rm -f libtriangle.a

@@ -52,6 +52,12 @@ public:
 	//This actually runs all of the mesher commands you set
 	int RunMesherCommands();
 
+	//Run a mesher command
+	int RunMesherCommand(MesherCommand* mc);
+
+	//Debugging function
+	int PrintMesherCommands();
+
 	//////////////////////////////
 	// Triangle Mesher Commands //
 	//////////////////////////////

@@ -466,6 +466,23 @@ int TriangleComplex::AppendVertexIndex(unsigned int vindex) {
 	return true;
 }
 
+
+int TriangleComplex::GenerateRandomGrid(double xmin, double xmax, double ymin, double ymax, unsigned int vertex_count) {
+	//Safety test
+	if(xmin >= xmax || ymin >= ymax || vertex_count == 0)
+		return false;
+
+	for(unsigned int i=0; i<vertex_count; i++) {
+		Vector2d* new_vector = new Vector2d;
+		new_vector->set(get_rand(xmin, xmax), get_rand(ymin, ymax));
+
+		global_vertex_list->push_back(new_vector);
+		AppendVertexIndex(i+1);
+	}
+
+	return true;
+}
+
 vector<unsigned int> TriangleComplex::GetIncompleteVertices() {
 	return incomplete_vertices;
 }
