@@ -45,6 +45,8 @@ public:
 		LOAD_MESH_FROM_FILE,
 		SAVE_MESH_TO_FILE,
 
+		WRITE_SVG,
+
 		APPEND_VERTEX,
 
 		BASIC_TRIANGLE_MESHER,
@@ -71,6 +73,11 @@ public:
 	//Load/Save Mesh From/To File options
 	char filename[1000];
 
+	//Write SVG options
+	char svg_filename[1000];
+	double svg_width;
+	double svg_height;
+
 	//Append Vertex options
 	Vector2d vertex;
 
@@ -80,6 +87,8 @@ public:
 	unsigned int delaunay_max_iterations;
 
 	//Stretched Grid options
+	unsigned int stretched_grid_iterations;
+	double stretched_grid_alpha;
 
 	/////////////////////////////////
 	// Mesher Command Results data //

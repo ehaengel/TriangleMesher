@@ -136,6 +136,8 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 				index = (unsigned int) atoi(index_str.c_str());
 
 				if(index >= total_triangles || GetTriangle(index) != NULL) {
+					printf("FAILING HERE!\n");
+
 					delete xml_document;
 					return false;
 				}
@@ -155,6 +157,8 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			if(n2_str != "") n2 = (unsigned int) atoi(n2_str.c_str());
 
 			if(n0 == 0 || n1 == 0 || n2 == 0) {
+				printf("NO HERE!!\n");
+
 				delete xml_document;
 				return false;
 			}
@@ -477,7 +481,40 @@ int TriangleComplex::GenerateRandomGrid(double xmin, double xmax, double ymin, d
 		new_vector->set(get_rand(xmin, xmax), get_rand(ymin, ymax));
 
 		global_vertex_list->push_back(new_vector);
-		AppendVertexIndex(i+1);
+		AppendVertexIndex(global_vertex_list->size()-1);
+	}
+
+	return true;
+}
+
+int TriangleComplex::GenerateUniformGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount) {
+	//Safety test
+	if(xmin >= xmax || ymin >= ymax || xcount == 0 || ycount == 0)
+		return false;
+
+	double xbuf = xmin;
+	double dx = 0.0;
+	if(xcount > 1) dx = (xmax - xmin) / (double(xcount) - 0.5);
+
+	double ybuf = ymin;
+	double dy = 0.0;
+	if(ycount > 1) dy = (ymax - ymin) / double(ycount - 1);
+
+	for(unsigned int i=0; i<ycount; i++) {
+		if(i % 2 == 0)	xbuf = xmin;
+		else			xbuf = xmin + 0.5*dx;
+		
+
+		for(unsigned int j=0; j<xcount; j++) {
+			Vector2d* new_vector = new Vector2d(xbuf, ybuf);
+
+			global_vertex_list->push_back(new_vector);
+			AppendVertexIndex(global_vertex_list->size()-1);
+
+			xbuf += dx;
+		}
+
+		ybuf += dy;
 	}
 
 	return true;
@@ -587,23 +624,32 @@ int TriangleComplex::RunTriangleMesher() {
 
 		if(basic_delaunay_flipper() == false)
 			return false;
+
+		if(kd_parent == NULL) {
+			//Reset the local indices of all triangles
+			unsigned int index = 0;
+			for(unsigned int i=0; i<GetTriangleCount(); i++) {
+				Triangle* tri = GetTriangle(i);
+
+				if(tri != NULL)
+					tri->SetLocalIndex(index++);
+			}
+		}
+
 	}
 
 	return true;
 }
 
 int TriangleComplex::RunDelaunayFlips() {
-	/*if(GetVertexCount() > MAXIMUM_MESH_SIZE) {
-		//Split up mesh via kd-tree
-	}
-
-	else {
-		//Run a simple triangle mesher
-		if(basic_delaunay_flipper() == false)
-			return false;
-	}*/
-
 	if(basic_delaunay_flipper() == false)
+		return false;
+
+	return true;
+}
+
+int TriangleComplex::StretchedGridMethod(unsigned int iterations, double alpha) {
+	if(basic_stretched_grid_method(iterations, alpha) == false)
 		return false;
 
 	return true;
@@ -1530,6 +1576,89 @@ int TriangleComplex::basic_delaunay_flipper() {
 			break;
 	}
 
+	return true;
+}
+
+int TriangleComplex::basic_stretched_grid_method(unsigned int iterations, double alpha) {
+	//These are used by the SGM algorithm and are pre-calculated here
+	vector<unsigned int> vertex_triangle_count;
+	vector<bool> vertex_clamped;
+	vector<double> vertex_angles;
+
+	vertex_triangle_count.resize(global_vertex_list->size(), 0);
+	vertex_clamped.resize(global_vertex_list->size(), true);
+	vertex_angles.resize(global_vertex_list->size(), 0.0);
+
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL)
+			continue;
+
+		for(int j=0; j<3; j++) {
+			unsigned int vj_index = tri->GetVertexIndex(j);
+
+			double vj_angle = 0.0;
+			if(tri->GetVertexAngle(j, vj_angle) == true) {
+				vertex_triangle_count[vj_index]++;
+				vertex_angles[vj_index] += vj_angle;
+			}
+		}
+	}
+
+	for(unsigned int i=0; i<GetVertexCount(); i++) {
+		unsigned int vindex = GetVertexIndex(i);
+
+		if(vertex_angles[vindex] < 6.28318)
+			continue;
+
+		if(vertex_triangle_count[vindex] == 0)
+			continue;
+
+		vertex_clamped[vindex] = false;
+	}
+
+	//Run the stretched grid method
+	for(int iter=0; iter<iterations; iter++) {
+		vector<Vector2d> vertex_adjustments;
+		vertex_adjustments.resize(global_vertex_list->size(), Vector2d(0, 0));
+
+		for(unsigned int i=0; i<GetTriangleCount(); i++) {
+			Triangle* tri = GetTriangle(i);
+			if(tri == NULL)
+				continue;
+
+			for(int j=0; j<3; j++) {
+				unsigned int vj_index = tri->GetVertexIndex(j);
+
+				Vector2d* vj = tri->GetVertex(j);
+				if(vj == NULL)
+					continue;
+
+				if(vertex_clamped[vj_index] == false) {
+					Vector2d* v1 = NULL;
+					Vector2d* v2 = NULL;
+
+					if(tri->GetAdjacentVertices(j, v1, v2) != false) {
+						vertex_adjustments[vj_index] += (*v1 - *vj);
+						vertex_adjustments[vj_index] += (*v2 - *vj);
+					}
+				}
+			}
+		}
+
+		for(unsigned int i=0; i<global_vertex_list->size(); i++) {
+			if(vertex_clamped[i] == false) {
+				Vector2d* v = GetGlobalVertex(i);
+				if(v == NULL)
+					continue;
+
+				//vertex_adjustments[i] /= double(vertex_triangle_count[i]);
+				(*v) = (*v) + (vertex_adjustments[i] * (alpha/vertex_triangle_count[i]));
+			}
+		}
+	}
+
+	printf("DONE WITH STRETCHED GRID!\n");
 	return true;
 }
 

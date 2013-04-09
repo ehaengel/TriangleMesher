@@ -70,12 +70,14 @@ public:
 	int LoadMeshFromFile(const char* filename);
 	int SaveMeshToFile(const char* filename);
 
+	int WriteSVG(const char* filename, double svg_width, double svg_height);
+
 	int AppendVertex(Vector2d vertex);
 
 	int BasicTriangleMesher();
 	int BasicDelaunayFlipper(unsigned int delaunay_max_iterations);
 
-	int StretchedGrid();
+	int StretchedGrid(unsigned int iterations, double alpha);
 
 private:
 	//Data regarding the mesher command stack

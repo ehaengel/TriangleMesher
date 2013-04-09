@@ -63,6 +63,7 @@ public:
 	int AppendVertexIndex(unsigned int vindex);
 
 	int GenerateRandomGrid(double xmin, double xmax, double ymin, double ymax, unsigned int vertex_count);
+	int GenerateUniformGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount);
 
 	vector<unsigned int> GetIncompleteVertices();
 	vector<double> GetIncompleteVerticesAngles();
@@ -75,6 +76,8 @@ public:
 
 	int RunTriangleMesher();
 	int RunDelaunayFlips();
+
+	int StretchedGridMethod(unsigned int iterations, double alpha);
 
 	////////////////////////////////
 	// K-d tree related functions //
@@ -126,6 +129,9 @@ private:
 
 	//The most basic delaunay flipper
 	int basic_delaunay_flipper();
+
+	//The most basic stretched grid method
+	int basic_stretched_grid_method(unsigned int iterations, double alpha);
 
 	//Initialize the kd-tree prism based on the vertex list
 	int compute_kd_prism();

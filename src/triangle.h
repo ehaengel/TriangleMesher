@@ -38,6 +38,8 @@ public:
 	unsigned int GetNextVertex(unsigned int vindex);
 	unsigned int GetPrevVertex(unsigned int vindex);
 
+	int GetAdjacentVertices(int vertex, Vector2d* &v1, Vector2d* &v2);
+
 	int IsVertex(unsigned int vindex);
 
 	//Adjacent triangles

@@ -181,6 +181,31 @@ unsigned int Triangle::GetPrevVertex(unsigned int vindex) {
 	return 0;
 }
 
+int Triangle::GetAdjacentVertices(int vertex, Vector2d* &v1, Vector2d* &v2) {
+	v1 = NULL;
+	v2 = NULL;
+
+	if(vertex == 0) {
+		v1 = GetVertex(1);
+		v2 = GetVertex(2);
+	}
+	else if(vertex == 1) {
+		v1 = GetVertex(2);
+		v2 = GetVertex(0);
+	}
+	else if(vertex == 2) {
+		v1 = GetVertex(0);
+		v2 = GetVertex(1);
+	}
+	else
+		return false;
+
+	if(v1 == NULL || v2 == NULL)
+		return false;
+
+	return true;
+}
+
 int Triangle::IsVertex(unsigned int vindex) {
 	if(vertices[0] == vindex) return true;
 	if(vertices[1] == vindex) return true;
@@ -308,7 +333,7 @@ int Triangle::TestPointInsideCircumcircle(Vector2d pt) {
 	if(compute_circumcircle() == false)
 		return true;
 
-	if(circumcenter->distance2(pt) <= circumradius*circumradius)
+	if(circumcenter->distance2(pt) < circumradius*circumradius)
 		return true;
 
 	return false;

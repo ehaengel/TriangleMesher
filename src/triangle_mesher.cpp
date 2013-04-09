@@ -133,6 +133,9 @@ int TriangleMesher::RunMesherCommand(MesherCommand* mc) {
 	if(mc->command_type == MesherCommand::GENERATE_RANDOM_GRID)
 		ret = GenerateRandomGrid(mc->xmin, mc->xmax, mc->ymin, mc->ymax, mc->vertex_count);
 
+	else if(mc->command_type == MesherCommand::GENERATE_UNIFORM_GRID)
+		ret = GenerateUniformGrid(mc->xmin, mc->xmax, mc->ymin, mc->ymax, mc->xcount, mc->ycount);
+
 	else if(mc->command_type == MesherCommand::RUN_TRIANGLE_MESHER)
 		ret = RunTriangleMesher(mc->use_kd_tree);
 
@@ -141,6 +144,12 @@ int TriangleMesher::RunMesherCommand(MesherCommand* mc) {
 
 	else if(mc->command_type == MesherCommand::SAVE_MESH_TO_FILE)
 		ret = SaveMeshToFile(mc->filename);
+
+	else if(mc->command_type == MesherCommand::WRITE_SVG)
+		ret = WriteSVG(mc->svg_filename, mc->svg_width, mc->svg_height);
+
+	else if(mc->command_type == MesherCommand::STRETCHED_GRID)
+		ret = StretchedGrid(mc->stretched_grid_iterations, mc->stretched_grid_alpha);
 
 	else if(mc->command_type == MesherCommand::DO_NOTHING)
 		ret = true;
@@ -192,6 +201,8 @@ int TriangleMesher::GenerateRandomGrid(double xmin, double xmax, double ymin, do
 }
 
 int TriangleMesher::GenerateUniformGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount) {
+	int ret = triangle_complex->GenerateUniformGrid(xmin, xmax, ymin, ymax, xcount, ycount);
+
 	return true;
 }
 
@@ -213,6 +224,10 @@ int TriangleMesher::SaveMeshToFile(const char* filename) {
 	return ret;
 }
 
+int TriangleMesher::WriteSVG(const char* filename, double svg_width, double svg_height) {
+	int ret = triangle_complex->write_svg(filename, svg_width, svg_height);
+}
+
 int TriangleMesher::AppendVertex(Vector2d vertex) {
 	return true;
 }
@@ -225,6 +240,8 @@ int TriangleMesher::BasicDelaunayFlipper(unsigned int delaunay_max_iterations) {
 	return true;
 }
 
-int TriangleMesher::StretchedGrid() {
-	return true;
+int TriangleMesher::StretchedGrid(unsigned int iterations, double alpha) {
+	int ret = triangle_complex->StretchedGridMethod(iterations, alpha);
+
+	return ret;
 }
