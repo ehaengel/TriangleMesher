@@ -136,6 +136,9 @@ int TriangleMesher::RunMesherCommand(MesherCommand* mc) {
 	else if(mc->command_type == MesherCommand::GENERATE_UNIFORM_GRID)
 		ret = GenerateUniformGrid(mc->xmin, mc->xmax, mc->ymin, mc->ymax, mc->xcount, mc->ycount);
 
+	else if(mc->command_type == MesherCommand::GENERATE_HEX_GRID)
+		ret = GenerateHexGrid(mc->xmin, mc->xmax, mc->ymin, mc->ymax, mc->xcount, mc->ycount);
+
 	else if(mc->command_type == MesherCommand::RUN_TRIANGLE_MESHER)
 		ret = RunTriangleMesher(mc->use_kd_tree);
 
@@ -205,6 +208,12 @@ int TriangleMesher::GenerateRandomGrid(double xmin, double xmax, double ymin, do
 
 int TriangleMesher::GenerateUniformGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount) {
 	int ret = triangle_complex->GenerateUniformGrid(xmin, xmax, ymin, ymax, xcount, ycount);
+
+	return true;
+}
+
+int TriangleMesher::GenerateHexGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount) {
+	int ret = triangle_complex->GenerateHexGrid(xmin, xmax, ymin, ymax, xcount, ycount);
 
 	return true;
 }

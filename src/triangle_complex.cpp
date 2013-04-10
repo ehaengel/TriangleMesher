@@ -523,31 +523,28 @@ int TriangleComplex::GenerateUniformGrid(double xmin, double xmax, double ymin, 
 
 int TriangleComplex::GenerateHexGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount) {
 	//Safety test
-	if(xmin >= xmax || ymin >= ymax || xcount == 0)
+	if(xmin >= xmax || ymin >= ymax || xcount == 0 || ycount == 0)
 		return false;
 
-	double xbuf = xmin;
-	double dx = 0.0;
-	if(xcount > 1) dx = (xmax - xmin) / double(xcount - 1);
+	Vector2d start(0.5*(xmin + xmax), 0.5*(ymin + ymax));
 
-	double ybuf = ymin;
-	double dy = 0.0;
-	if(ycount > 1) dy = dx * (sqrt(3.0) / 2.0);
+	double xlen = (1/cos(15*3.141592/180.0))*(xmax - xmin) / (xcount - 1);
+	double ylen = (1/cos(15*3.141592/180.0))*(ymax - ymin) / (ycount - 1);
 
-	for(unsigned int i=0; i<ycount; i++) {
-		if(i % 2 == 0)	xbuf = xmin;
-		else			xbuf = xmin + 0.5*dx;
+	Vector2d u(xlen*cos(15*3.141592/180.0), xlen*sin(15*3.141592/180.0));
+	Vector2d v(ylen*sin(15*3.141592/180.0), ylen*cos(15*3.141592/180.0));
 
-		for(unsigned int j=0; j<xcount; j++) {
-			Vector2d* new_vector = new Vector2d(xbuf, ybuf);
+	for(int i=-int(ycount); i<int(ycount); i++) {
+		for(int j=-int(xcount); j<int(xcount); j++) {
+			Vector2d temp = start + (u*i) + (v*j);
+			if(temp.x >= xmin && temp.x <= xmax && temp.y >= ymin && temp.y <= ymax) {
+				Vector2d* new_vector = new Vector2d;
+				*new_vector = temp;
 
-			global_vertex_list->push_back(new_vector);
-			AppendVertexIndex(global_vertex_list->size()-1);
-
-			xbuf += dx;
+				global_vertex_list->push_back(new_vector);
+				AppendVertexIndex(global_vertex_list->size()-1);
+			}
 		}
-
-		ybuf += dy;
 	}
 
 	return true;
@@ -1612,7 +1609,7 @@ int TriangleComplex::basic_delaunay_flipper() {
 			}
 		}
 
-		//Stop if we've converged to a perfect triangulation
+		//Stop if we've converged to a delaunay triangulation
 		if(flip_performed == false)
 			break;
 	}
@@ -1625,6 +1622,9 @@ int TriangleComplex::basic_stretched_grid_method(unsigned int iterations, double
 	vector<unsigned int> vertex_triangle_count;
 	vector<bool> vertex_clamped;
 	vector<double> vertex_angles;
+
+	double average_edge_length = 0.0;
+	double total_edge_count = 0.0;
 
 	vertex_triangle_count.resize(global_vertex_list->size(), 0);
 	vertex_clamped.resize(global_vertex_list->size(), true);
@@ -1658,6 +1658,49 @@ int TriangleComplex::basic_stretched_grid_method(unsigned int iterations, double
 		vertex_clamped[vindex] = false;
 	}
 
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL)
+			continue;
+
+		for(int j=0; j<3; j++) {
+			unsigned int vj_index = tri->GetVertexIndex(j);
+
+			Vector2d* vj = tri->GetVertex(j);
+			if(vj == NULL)
+				continue;
+
+			Vector2d* v1 = NULL;
+			Vector2d* v2 = NULL;
+
+			Triangle* adj1 = NULL;
+			Triangle* adj2 = NULL;
+
+			if(tri->GetAdjacentVerticesTriangles(j, v1, v2, adj1, adj2) != false) {
+				if(adj2 == NULL) {
+					average_edge_length += vj->distance(*v1) * 0.5;
+					total_edge_count += 0.5;
+				}
+				else {
+					average_edge_length += vj->distance(*v1) * 0.25;
+					total_edge_count += 0.25;
+				}
+
+				if(adj1 == NULL) {
+					average_edge_length += vj->distance(*v2) * 0.5;
+					total_edge_count += 0.5;
+				}
+				else {
+					average_edge_length += vj->distance(*v2) * 0.25;
+					total_edge_count += 0.25;
+				}
+			}
+		}
+	}
+	average_edge_length /= total_edge_count;
+	printf("Averaged edge length: %f\n", average_edge_length);
+	printf("Total edge count: %f\n", total_edge_count);
+
 	//Run the stretched grid method
 	for(int iter=0; iter<iterations; iter++) {
 		vector<Vector2d> vertex_adjustments;
@@ -1679,14 +1722,62 @@ int TriangleComplex::basic_stretched_grid_method(unsigned int iterations, double
 					Vector2d* v1 = NULL;
 					Vector2d* v2 = NULL;
 
-					if(tri->GetAdjacentVertices(j, v1, v2) != false) {
-						vertex_adjustments[vj_index] += (*v1 - *vj);
-						vertex_adjustments[vj_index] += (*v2 - *vj);
+					Triangle* adj1 = NULL;
+					Triangle* adj2 = NULL;
+					if(tri->GetAdjacentVerticesTriangles(j, v1, v2, adj1, adj2) != false) {
+						//vertex_adjustments[vj_index] += (*v1 - *vj)*0.5;
+						//vertex_adjustments[vj_index] += (*v2 - *vj)*0.5;
+
+						/*double v1_dist = vj->distance(*v1);
+						double v2_dist = vj->distance(*v2);
+
+						double v1_factor = (v1_dist - average_edge_length) / v1_dist;
+						double v2_factor = (v2_dist - average_edge_length) / v2_dist;*/
+
+						if(adj2 == NULL)
+							vertex_adjustments[vj_index] += (*v1 - *vj) * 0.5;
+
+						else
+							vertex_adjustments[vj_index] += (*v1 - *vj) * 0.25;
+
+						if(adj1 == NULL)
+							vertex_adjustments[vj_index] += (*v2 - *vj) * 0.5;
+
+						else
+							vertex_adjustments[vj_index] += (*v2 - *vj) * 0.25;
+
+
+						/*double dist2 = vj->distance2(*v1);
+						if(dist2 < alpha) dist2 = alpha;
+						vertex_adjustments[vj_index] += (*vj - *v1)*0.5/dist2;
+
+						dist2 = vj->distance2(*v2);
+						if(dist2 < alpha) dist2 = alpha;
+						vertex_adjustments[vj_index] += (*vj - *v2)*0.5/dist2;*/
 					}
 				}
 			}
 		}
 
+		/*#pragma omp parallel for
+		for(unsigned int i=0; i<global_vertex_list->size(); i++) {
+			Vector2d* vi = GetGlobalVertex(i);
+			if(vi == NULL)
+				continue;
+
+			for(unsigned int j=i+1; j<global_vertex_list->size(); j++) {
+				Vector2d* vj = GetGlobalVertex(j);
+				if(vj == NULL)
+					continue;
+
+				double dist2 = vi->distance2(*vj);
+				if(dist2 < alpha) dist2 = alpha;
+
+				vertex_adjustments[i] -= (*vi - *vj)/dist2;
+			}
+		}*/
+
+		#pragma omp parallel for
 		for(unsigned int i=0; i<global_vertex_list->size(); i++) {
 			if(vertex_clamped[i] == false) {
 				Vector2d* v = GetGlobalVertex(i);

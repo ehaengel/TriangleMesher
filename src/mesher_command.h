@@ -39,6 +39,7 @@ public:
 
 		GENERATE_RANDOM_GRID,
 		GENERATE_UNIFORM_GRID,
+		GENERATE_HEX_GRID,
 
 		RUN_TRIANGLE_MESHER,
 
@@ -59,7 +60,7 @@ public:
 	// Mesher Command option data //
 	////////////////////////////////
 
-	//Generate Random/Uniform Grid options
+	//Generate Random/Uniform/Hex Grid options
 	double xmin, xmax;
 	double ymin, ymax;
 

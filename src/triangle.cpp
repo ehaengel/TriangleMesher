@@ -206,6 +206,43 @@ int Triangle::GetAdjacentVertices(int vertex, Vector2d* &v1, Vector2d* &v2) {
 	return true;
 }
 
+int Triangle::GetAdjacentVerticesTriangles(int vertex, Vector2d* &v1, Vector2d* &v2, Triangle* &adj1, Triangle* &adj2) {
+	v1 = NULL;
+	v2 = NULL;
+
+	adj1 = NULL;
+	adj2 = NULL;
+
+	if(vertex == 0) {
+		v1 = GetVertex(1);
+		v2 = GetVertex(2);
+
+		adj1 = GetAdjacentTriangle(1);
+		adj2 = GetAdjacentTriangle(2);
+	}
+	else if(vertex == 1) {
+		v1 = GetVertex(2);
+		v2 = GetVertex(0);
+
+		adj1 = GetAdjacentTriangle(2);
+		adj2 = GetAdjacentTriangle(0);
+	}
+	else if(vertex == 2) {
+		v1 = GetVertex(0);
+		v2 = GetVertex(1);
+
+		adj1 = GetAdjacentTriangle(0);
+		adj2 = GetAdjacentTriangle(1);
+	}
+	else
+		return false;
+
+	if(v1 == NULL || v2 == NULL)
+		return false;
+
+	return true;
+}
+
 int Triangle::IsVertex(unsigned int vindex) {
 	if(vertices[0] == vindex) return true;
 	if(vertices[1] == vindex) return true;

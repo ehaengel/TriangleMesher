@@ -39,6 +39,7 @@ public:
 	unsigned int GetPrevVertex(unsigned int vindex);
 
 	int GetAdjacentVertices(int vertex, Vector2d* &v1, Vector2d* &v2);
+	int GetAdjacentVerticesTriangles(int vertex, Vector2d* &v1, Vector2d* &v2, Triangle* &adj1, Triangle* &adj2);
 
 	int IsVertex(unsigned int vindex);
 

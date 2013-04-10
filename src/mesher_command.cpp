@@ -100,6 +100,28 @@ int MesherCommand::LoadFromTagData(XML_Tag* mesh_command_tag) {
 		if(xcount_str != "") xcount = (unsigned int) atoi(xcount_str.c_str());
 		if(ycount_str != "") ycount = (unsigned int) atoi(ycount_str.c_str());
 	}
+	
+	else if(strcmp(command_type_str.c_str(), "GenerateHexGrid") == 0) {
+		command_type = MesherCommand::GENERATE_HEX_GRID;
+
+		string xmin_str, xmax_str;
+		string ymin_str, ymax_str;
+		string xcount_str, ycount_str;
+
+		xmin_str = mesh_command_tag->GetAttributeValue("xmin");
+		xmax_str = mesh_command_tag->GetAttributeValue("xmax");
+		ymin_str = mesh_command_tag->GetAttributeValue("ymin");
+		ymax_str = mesh_command_tag->GetAttributeValue("ymax");
+		xcount_str = mesh_command_tag->GetAttributeValue("xcount");
+		ycount_str = mesh_command_tag->GetAttributeValue("ycount");
+
+		if(xmin_str != "") xmin = atof(xmin_str.c_str());
+		if(xmax_str != "") xmax = atof(xmax_str.c_str());
+		if(ymin_str != "") ymin = atof(ymin_str.c_str());
+		if(ymax_str != "") ymax = atof(ymax_str.c_str());
+		if(xcount_str != "") xcount = (unsigned int) atoi(xcount_str.c_str());
+		if(ycount_str != "") ycount = (unsigned int) atoi(ycount_str.c_str());
+	}
 
 	else if(strcmp(command_type_str.c_str(), "TriangleMesher") == 0) {
 		command_type = MesherCommand::RUN_TRIANGLE_MESHER;
@@ -180,6 +202,14 @@ int MesherCommand::print() {
 
 	else if(command_type == MesherCommand::GENERATE_UNIFORM_GRID) {
 		printf("Mesher command: Generate uniform grid\n");
+		printf("xmin: %f; xmax: %f\n", xmin, xmax);
+		printf("ymin: %f; ymax: %f\n", ymin, ymax);
+		printf("x vertex count: %u\n", xcount);
+		printf("y vertex count: %u\n", ycount);
+	}
+
+	else if(command_type == MesherCommand::GENERATE_HEX_GRID) {
+		printf("Mesher command: Generate hex grid\n");
 		printf("xmin: %f; xmax: %f\n", xmin, xmax);
 		printf("ymin: %f; ymax: %f\n", ymin, ymax);
 		printf("x vertex count: %u\n", xcount);
