@@ -148,6 +148,9 @@ int TriangleMesher::RunMesherCommand(MesherCommand* mc) {
 	else if(mc->command_type == MesherCommand::WRITE_SVG)
 		ret = WriteSVG(mc->svg_filename, mc->svg_width, mc->svg_height);
 
+	else if(mc->command_type == MesherCommand::BASIC_TRIANGLE_MESHER)
+		ret = BasicTriangleMesher();
+
 	else if(mc->command_type == MesherCommand::STRETCHED_GRID)
 		ret = StretchedGrid(mc->stretched_grid_iterations, mc->stretched_grid_alpha);
 
@@ -233,7 +236,9 @@ int TriangleMesher::AppendVertex(Vector2d vertex) {
 }
 
 int TriangleMesher::BasicTriangleMesher() {
-	return true;
+	int ret = triangle_complex->BasicTriangleMesher();
+
+	return ret;
 }
 
 int TriangleMesher::BasicDelaunayFlipper(unsigned int delaunay_max_iterations) {

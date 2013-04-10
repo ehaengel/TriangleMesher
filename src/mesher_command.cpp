@@ -144,6 +144,9 @@ int MesherCommand::LoadFromTagData(XML_Tag* mesh_command_tag) {
 		if(height_str != "") svg_height = atof(height_str.c_str());
 	}
 
+	else if(strcmp(command_type_str.c_str(), "BasicTriangleMesher") == 0)
+		command_type = MesherCommand::BASIC_TRIANGLE_MESHER;
+
 	else if(strcmp(command_type_str.c_str(), "StretchedGrid") == 0) {
 		command_type = MesherCommand::STRETCHED_GRID;
 
@@ -204,6 +207,9 @@ int MesherCommand::print() {
 		printf("svg width: %f\n", svg_width);
 		printf("svg height: %f\n", svg_height);
 	}
+
+	else if(command_type == MesherCommand::BASIC_TRIANGLE_MESHER)
+		printf("Mesher command: Basic triangle mesher\n");
 
 	else if(command_type == MesherCommand::STRETCHED_GRID) {
 		printf("Mesher command: Stretched grid\n");

@@ -494,16 +494,49 @@ int TriangleComplex::GenerateUniformGrid(double xmin, double xmax, double ymin, 
 
 	double xbuf = xmin;
 	double dx = 0.0;
-	if(xcount > 1) dx = (xmax - xmin) / (double(xcount) - 0.5);
+	//if(xcount > 1) dx = (xmax - xmin) / (double(xcount) - 0.5);
+	if(xcount > 1) dx = (xmax - xmin) / double(xcount - 1);
 
 	double ybuf = ymin;
 	double dy = 0.0;
 	if(ycount > 1) dy = (ymax - ymin) / double(ycount - 1);
 
 	for(unsigned int i=0; i<ycount; i++) {
+		//if(i % 2 == 0)	xbuf = xmin;
+		//else			xbuf = xmin + 0.5*dx;
+		xbuf = xmin;
+
+		for(unsigned int j=0; j<xcount; j++) {
+			Vector2d* new_vector = new Vector2d(xbuf, ybuf);
+
+			global_vertex_list->push_back(new_vector);
+			AppendVertexIndex(global_vertex_list->size()-1);
+
+			xbuf += dx;
+		}
+
+		ybuf += dy;
+	}
+
+	return true;
+}
+
+int TriangleComplex::GenerateHexGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount) {
+	//Safety test
+	if(xmin >= xmax || ymin >= ymax || xcount == 0)
+		return false;
+
+	double xbuf = xmin;
+	double dx = 0.0;
+	if(xcount > 1) dx = (xmax - xmin) / double(xcount - 1);
+
+	double ybuf = ymin;
+	double dy = 0.0;
+	if(ycount > 1) dy = dx * (sqrt(3.0) / 2.0);
+
+	for(unsigned int i=0; i<ycount; i++) {
 		if(i % 2 == 0)	xbuf = xmin;
 		else			xbuf = xmin + 0.5*dx;
-		
 
 		for(unsigned int j=0; j<xcount; j++) {
 			Vector2d* new_vector = new Vector2d(xbuf, ybuf);
@@ -607,6 +640,10 @@ int TriangleComplex::RunTriangleMesher() {
 		if(basic_delaunay_flipper() == false)
 			return false;
 
+		//Clean up the mesh
+		//if(basic_mesh_cleaner() == false)
+		//	return false;
+
 		//Reset the local indices of all triangles
 		unsigned int index = 0;
 		for(unsigned int i=0; i<GetTriangleCount(); i++) {
@@ -626,6 +663,10 @@ int TriangleComplex::RunTriangleMesher() {
 			return false;
 
 		if(kd_parent == NULL) {
+			//Clean up the mesh
+			//if(basic_mesh_cleaner() == false)
+			//	return false;
+
 			//Reset the local indices of all triangles
 			unsigned int index = 0;
 			for(unsigned int i=0; i<GetTriangleCount(); i++) {
@@ -635,7 +676,6 @@ int TriangleComplex::RunTriangleMesher() {
 					tri->SetLocalIndex(index++);
 			}
 		}
-
 	}
 
 	return true;
@@ -643,6 +683,13 @@ int TriangleComplex::RunTriangleMesher() {
 
 int TriangleComplex::RunDelaunayFlips() {
 	if(basic_delaunay_flipper() == false)
+		return false;
+
+	return true;
+}
+
+int TriangleComplex::BasicTriangleMesher() {
+	if(basic_triangle_mesher() == false)
 		return false;
 
 	return true;
@@ -1174,18 +1221,6 @@ int TriangleComplex::basic_triangle_mesher() {
 			if(tri == NULL || tri->GetAdjacentTriangleCount() == 3)
 				continue;
 
-			/*int opposing_vertex = -1;
-
-			for(int j=0; j<3; j++) {
-				if(tri->GetAdjacentTriangle(j) == NULL) {
-					opposing_vertex = j;
-					break;
-				}
-			}
-
-			if(opposing_vertex == -1)
-				continue;*/
-
 			for(int opposing_vertex=0; opposing_vertex<3; opposing_vertex++) {
 				if(tri->GetAdjacentTriangle(opposing_vertex) != NULL)
 					continue;
@@ -1201,10 +1236,8 @@ int TriangleComplex::basic_triangle_mesher() {
 						continue;
 
 					//Make sure the incomplete vertex is not the opposite vertex for our edge
-					if(incomplete_vertices[j] == tri->GetVertexIndex(opposing_vertex)) {
-						//printf("OPPOSITE VERTEX FAIL\n");
+					if(incomplete_vertices[j] == tri->GetVertexIndex(opposing_vertex))
 						continue;
-					}
 
 					//Create a test triangle
 					new_tri->SetVertex(0, incomplete_vertices[j]);
@@ -1229,11 +1262,14 @@ int TriangleComplex::basic_triangle_mesher() {
 					//Test to see if new_tri overlaps with any vertices
 					int found_vertex_overlap = false;
 					for(unsigned int k=0; k<GetVertexCount(); k++) {
+						if(new_tri->IsVertex(GetVertexIndex(k)) == true)
+							continue;
+
 						Vector2d* vk = GetVertex(k);
 						if(vk == NULL)
 							continue;
 
-						if(new_tri->TestPointInside(*vk, true) == true) {
+						if(new_tri->TestPointInside(*vk, false) == true) {
 							found_vertex_overlap = true;
 							break;
 						}
@@ -1251,13 +1287,18 @@ int TriangleComplex::basic_triangle_mesher() {
 							break;
 						}
 					}
+					if(found_triangle_overlap == true)
+						continue;
 
 					//We have found a good triangle
-					if(found_triangle_overlap == false) {
-						found_good_triangle = true;
-						break;
-					}
+					//if(found_triangle_overlap == false) {
+					found_good_triangle = true;
+					break;
+					//}
 				}
+
+				if(found_good_triangle == true)
+					break;
 			}
 
 			if(found_good_triangle == true)
@@ -1659,6 +1700,32 @@ int TriangleComplex::basic_stretched_grid_method(unsigned int iterations, double
 	}
 
 	printf("DONE WITH STRETCHED GRID!\n");
+	return true;
+}
+
+int TriangleComplex::basic_mesh_cleaner() {
+	vector<unsigned int> triangles_to_delete;
+
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL)
+			continue;
+
+		for(int j=0; j<3; j++) {
+			double angle = 0.0;
+			if(tri->GetVertexAngle(j, angle) != false && angle > 3.141592/2.0) {
+				if(tri->GetAdjacentTriangleCount() < 3) {
+					triangles_to_delete.push_back(i);
+					break;
+				}
+			}
+		}
+	}
+
+	printf("Number of triangles to be deleted: %u\n", triangles_to_delete.size());
+	for(unsigned int i=triangles_to_delete.size(); i>0; i--)
+		DeleteTriangle(triangles_to_delete[i-1]);
+
 	return true;
 }
 
