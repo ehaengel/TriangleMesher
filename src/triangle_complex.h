@@ -80,6 +80,9 @@ public:
 
 	int BasicTriangleMesher();
 
+	int SubdivideTriangle(unsigned int vindex, unsigned int triangle_local_index);
+	int BarycentricSubdivide(unsigned int triangle_local_index);
+
 	int StretchedGridMethod(unsigned int iterations, double alpha);
 
 	////////////////////////////////

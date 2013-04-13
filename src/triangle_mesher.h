@@ -75,6 +75,9 @@ public:
 
 	int AppendVertex(Vector2d vertex);
 
+	int SubdivideTriangle(unsigned int vindex, unsigned int triangle_local_index);
+	int BarycentricSubdivide(unsigned int triangle_local_index);
+
 	int BasicTriangleMesher();
 	int BasicDelaunayFlipper(unsigned int delaunay_max_iterations);
 

@@ -77,26 +77,6 @@ Triangle::~Triangle() {
 }
 
 //Data management
-int Triangle::SetVertex(unsigned int vindex) {
-	//Vertex 0 is the null vertex
-	if(vertices[0] == 0)
-		SetVertex(0, vindex);
-
-	//Vertex 1 is the null vertex
-	else if(vertices[1] == 0)
-		SetVertex(1, vindex);
-
-	//Vertex 2 is the null vertex
-	else if(vertices[2] == 0)
-		SetVertex(2, vindex);
-
-	//All the vertices are filled
-	else
-		return false;
-
-	return true;
-}
-
 int Triangle::SetVertex(int vertex, unsigned int vindex) {
 	//Safety check
 	if(vertex < 0 || vertex > 2)
@@ -760,6 +740,7 @@ int Triangle::GetVertexAngle(int vertex, double& angle) {
 	return true;
 }
 
+//Switch around the vertices so that they are in ccw order
 int Triangle::OrientVertices() {
 	//Get the vertices of this triangle
 	Vector2d* v0 = GetVertex(0);
@@ -783,8 +764,6 @@ int Triangle::OrientVertices() {
 		unsigned int v0_index = vertices[0];
 		SetVertex(0, GetVertexIndex(1));
 		SetVertex(1, v0_index);
-		//vertices[0] = vertices[1];
-		//vertices[1] = v0_index;
 
 		//Also switch the adjacent triangles across from those vertices
 		Triangle* adj_tri = GetAdjacentTriangle(0);
@@ -795,7 +774,124 @@ int Triangle::OrientVertices() {
 	return true;
 }
 
-//Debugging functions
+//Subdivide this triangle based on a newly added vertex
+int Triangle::SubdivideTriangle(unsigned int vindex, vector<Triangle*> &results) {
+	//Safety test
+	if(vindex >= global_vertex_list->size())
+		return false;
+
+	Vector2d* pt = GetGlobalVertex(vindex);
+	if(pt == NULL || TestPointInside(*pt, true) == false)
+		return false;
+
+	//Clear the results to start
+	results.clear();
+
+	//Create three new triangles
+	Triangle* tri0 = new Triangle(global_vertex_list);
+	Triangle* tri1 = new Triangle(global_vertex_list);
+	Triangle* tri2 = new Triangle(global_vertex_list);
+
+	tri0->SetVertex(0, vindex);
+	tri0->SetVertex(1, GetVertexIndex(1));
+	tri0->SetVertex(2, GetVertexIndex(2));
+
+	tri1->SetVertex(0, GetVertexIndex(0));
+	tri1->SetVertex(1, vindex);
+	tri1->SetVertex(2, GetVertexIndex(2));
+
+	tri2->SetVertex(0, GetVertexIndex(0));
+	tri2->SetVertex(1, GetVertexIndex(1));
+	tri2->SetVertex(2, vindex);
+
+	//Establish adjacency information
+	Triangle* adj0 = GetAdjacentTriangle(0);
+	Triangle* adj1 = GetAdjacentTriangle(1);
+	Triangle* adj2 = GetAdjacentTriangle(2);
+
+	tri0->SetAdjacentTriangle(0, adj0);
+	tri0->SetAdjacentTriangle(1, tri1);
+	tri0->SetAdjacentTriangle(2, tri2);
+
+	tri1->SetAdjacentTriangle(0, tri0);
+	tri1->SetAdjacentTriangle(1, adj1);
+	tri1->SetAdjacentTriangle(2, tri2);
+
+	tri2->SetAdjacentTriangle(0, tri0);
+	tri2->SetAdjacentTriangle(1, tri1);
+	tri2->SetAdjacentTriangle(2, adj2);
+
+	for(int i=0; i<3; i++) {
+		if(adj0 != NULL && adj0->GetAdjacentTriangle(i) == this)
+			adj0->SetAdjacentTriangle(i, tri0);
+
+		if(adj1 != NULL && adj1->GetAdjacentTriangle(i) == this)
+			adj1->SetAdjacentTriangle(i, tri1);
+
+		if(adj2 != NULL && adj2->GetAdjacentTriangle(i) == this)
+			adj2->SetAdjacentTriangle(i, tri2);
+	}
+
+	//Try to orient the triangles and if they're good add them to the results
+	if(tri0->OrientVertices() == true)
+		results.push_back(tri0);
+
+	else {
+		delete tri0;
+		tri1->SetAdjacentTriangle(0, NULL);
+		tri2->SetAdjacentTriangle(0, NULL);
+	}
+
+	if(tri1->OrientVertices() == true)
+		results.push_back(tri1);
+
+	else {
+		delete tri1;
+		tri0->SetAdjacentTriangle(1, NULL);
+		tri2->SetAdjacentTriangle(1, NULL);
+	}
+
+	if(tri2->OrientVertices() == true)
+		results.push_back(tri2);
+
+	else {
+		delete tri2;
+		tri0->SetAdjacentTriangle(2, NULL);
+		tri1->SetAdjacentTriangle(2, NULL);
+	}
+
+	return true;
+}
+
+//Barycentric subdivide a triangle
+// + note that this function adds a new vertex to the global vertex list
+int Triangle::BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangle*> &results) {
+	Vector2d* pt = new Vector2d(0.0, 0.0);
+	if(GetCentroid(*pt) == false) {
+		delete pt;
+		return false;
+	}
+
+	global_vertex_list->push_back(pt);
+	centroid_vindex = global_vertex_list->size()-1;
+
+	//Try to subdivide this triangle at the barycenter
+	if(SubdivideTriangle(centroid_vindex, results) == false) {
+		delete (*global_vertex_list)[centroid_vindex];
+		(*global_vertex_list).erase((*global_vertex_list).begin() + centroid_vindex);
+
+		centroid_vindex = 0;
+		results.clear();
+	}
+
+	return true;
+}
+
+
+/////////////////////////
+// Debugging functions //
+/////////////////////////
+
 int Triangle::print() {
 	return true;
 }
@@ -888,7 +984,7 @@ int Triangle::compute_circumcircle() {
 	return true;
 }
 
-TriangleEdge::TriangleEdge() {
+/*TriangleEdge::TriangleEdge() {
 	tri = NULL;
 	opposing_vertex = 0;
 
@@ -948,4 +1044,4 @@ TriangleEdge TriangleEdge::operator=(TriangleEdge te) {
 	vertices[1] = te.vertices[1];
 
 	return (*this);
-}
+}*/

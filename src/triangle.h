@@ -26,7 +26,6 @@ public:
 	/////////////////////
 
 	//Vertex functions
-	int SetVertex(unsigned int vindex);
 	int SetVertex(int vertex, unsigned int vindex);
 
 	int GetVertexCount();
@@ -97,6 +96,13 @@ public:
 	//Switch around the vertices so that they are in ccw order
 	int OrientVertices();
 
+	//Subdivide this triangle based on a newly added vertex
+	int SubdivideTriangle(unsigned int vindex, vector<Triangle*> &results);
+
+	//Barycentric subdivide a triangle
+	// + note that this function adds a new vertex to the global vertex list
+	int BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangle*> &results);
+
 	/////////////////////////
 	// Debugging functions //
 	/////////////////////////
@@ -109,8 +115,6 @@ private:
 	// Internal use functions //
 	////////////////////////////
 	int compute_circumcircle();
-
-	Vector2d compute_centroid();
 
 	//Triangle data
 	VertexList* global_vertex_list;
@@ -128,7 +132,7 @@ private:
 
 typedef vector<Triangle*> TriangleList;
 
-class TriangleEdge {
+/*class TriangleEdge {
 public:
 	TriangleEdge();
 	TriangleEdge(Triangle* tri, int opposing_vertex);
@@ -144,6 +148,6 @@ public:
 
 	//The vertices of the edge in question
 	unsigned int vertices[2];
-};
+};*/
 
 #endif

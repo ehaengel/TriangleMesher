@@ -692,6 +692,71 @@ int TriangleComplex::BasicTriangleMesher() {
 	return true;
 }
 
+int TriangleComplex::SubdivideTriangle(unsigned int vindex, unsigned int triangle_local_index) {
+	int found = false;
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		if(tri != NULL && tri->GetLocalIndex() == triangle_local_index) {
+			found = true;
+
+			//Try to subdivide this triangle
+			vector<Triangle*> results;
+
+			if(tri->SubdivideTriangle(vindex, results) == false)
+				return false;
+
+			//Add the vindex to this complex if it isn't already in there
+			int vindex_in_complex = false;
+			for(unsigned int j=0; j<GetVertexCount(); j++) {
+				if(GetVertexIndex(j) == vindex) {
+					vindex_in_complex = true;
+					break;
+				}
+			}
+			if(vindex_in_complex == false)
+				AppendVertexIndex(vindex);
+
+			//And replace this triangle with its subdivision
+			DeleteTriangle(i);
+			AppendTriangle(results[0]);
+			AppendTriangle(results[1]);
+			AppendTriangle(results[2]);
+		}
+	}
+
+	return found;
+}
+
+int TriangleComplex::BarycentricSubdivide(unsigned int triangle_local_index) {
+	int found = false;
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		if(tri != NULL && tri->GetLocalIndex() == triangle_local_index) {
+			found = true;
+
+			//Try to barycentric subdivide this triangle
+			unsigned int centroid_vindex = 0;
+			vector<Triangle*> results;
+
+			if(tri->BarycentricSubdivide(centroid_vindex, results) == false)
+				return false;
+
+			//Add the centroid vindex to this complex
+			AppendVertexIndex(centroid_vindex);
+
+			//And replace this triangle with its subdivision
+			DeleteTriangle(i);
+			AppendTriangle(results[0]);
+			AppendTriangle(results[1]);
+			AppendTriangle(results[2]);
+		}
+	}
+
+	return found;
+}
+
 int TriangleComplex::StretchedGridMethod(unsigned int iterations, double alpha) {
 	if(basic_stretched_grid_method(iterations, alpha) == false)
 		return false;

@@ -35,6 +35,10 @@ MesherCommand::MesherCommand() {
 	//Append Vertex options
 	vertex = Vector2d(0, 0);
 
+	//Subdivide triangle/Barycentric subdivision options
+	subdivide_vindex = 0;
+	subdivide_triangle_local_index = 0;
+
 	//Basic Triangle Mesher options
 
 	//Basic Delaunay Flipper options
@@ -166,6 +170,26 @@ int MesherCommand::LoadFromTagData(XML_Tag* mesh_command_tag) {
 		if(height_str != "") svg_height = atof(height_str.c_str());
 	}
 
+	else if(strcmp(command_type_str.c_str(), "SubdivideTriangle") == 0) {
+		command_type = MesherCommand::SUBDIVIDE_TRIANGLE;
+
+		string subdivide_vindex_str = mesh_command_tag->GetAttributeValue("vindex");
+		if(subdivide_vindex_str != "")
+			subdivide_vindex = (unsigned int) atoi(subdivide_vindex_str.c_str());
+
+		string subdivide_tindex_str = mesh_command_tag->GetAttributeValue("tindex");
+		if(subdivide_tindex_str != "")
+			subdivide_triangle_local_index = (unsigned int) atoi(subdivide_tindex_str.c_str());
+	}
+
+	else if(strcmp(command_type_str.c_str(), "BarycentricSubdivide") == 0) {
+		command_type = MesherCommand::BARYCENTRIC_SUBDIVIDE;
+
+		string subdivide_tindex_str = mesh_command_tag->GetAttributeValue("tindex");
+		if(subdivide_tindex_str != "")
+			subdivide_triangle_local_index = (unsigned int) atoi(subdivide_tindex_str.c_str());
+	}
+
 	else if(strcmp(command_type_str.c_str(), "BasicTriangleMesher") == 0)
 		command_type = MesherCommand::BASIC_TRIANGLE_MESHER;
 
@@ -236,6 +260,17 @@ int MesherCommand::print() {
 		printf("filename: %s\n", svg_filename);
 		printf("svg width: %f\n", svg_width);
 		printf("svg height: %f\n", svg_height);
+	}
+
+	else if(command_type == MesherCommand::SUBDIVIDE_TRIANGLE) {
+		printf("Mesher command: Subdivide triangle\n");
+		printf("Subdivide vertex index: %u\n", subdivide_vindex);
+		printf("Subdivide triangle local index: %u\n", subdivide_triangle_local_index);
+	}
+
+	else if(command_type == MesherCommand::BARYCENTRIC_SUBDIVIDE) {
+		printf("Mesher command: Barycentric subdivide\n");
+		printf("Subdivide triangle local index: %u\n", subdivide_triangle_local_index);
 	}
 
 	else if(command_type == MesherCommand::BASIC_TRIANGLE_MESHER)

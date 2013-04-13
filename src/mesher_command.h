@@ -50,6 +50,9 @@ public:
 
 		APPEND_VERTEX,
 
+		SUBDIVIDE_TRIANGLE,
+		BARYCENTRIC_SUBDIVIDE,
+
 		BASIC_TRIANGLE_MESHER,
 		BASIC_DELAUNAY_FLIPPER,
 
@@ -81,6 +84,10 @@ public:
 
 	//Append Vertex options
 	Vector2d vertex;
+
+	//Subdivide triangle/Barycentric subdivision options
+	unsigned int subdivide_vindex;
+	unsigned int subdivide_triangle_local_index;
 
 	//Basic Triangle Mesher options
 

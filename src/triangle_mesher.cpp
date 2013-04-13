@@ -151,6 +151,12 @@ int TriangleMesher::RunMesherCommand(MesherCommand* mc) {
 	else if(mc->command_type == MesherCommand::WRITE_SVG)
 		ret = WriteSVG(mc->svg_filename, mc->svg_width, mc->svg_height);
 
+	else if(mc->command_type == MesherCommand::SUBDIVIDE_TRIANGLE)
+		ret = SubdivideTriangle(mc->subdivide_vindex, mc->subdivide_triangle_local_index);
+
+	else if(mc->command_type == MesherCommand::BARYCENTRIC_SUBDIVIDE)
+		ret = BarycentricSubdivide(mc->subdivide_triangle_local_index);
+
 	else if(mc->command_type == MesherCommand::BASIC_TRIANGLE_MESHER)
 		ret = BasicTriangleMesher();
 
@@ -242,6 +248,16 @@ int TriangleMesher::WriteSVG(const char* filename, double svg_width, double svg_
 
 int TriangleMesher::AppendVertex(Vector2d vertex) {
 	return true;
+}
+
+int TriangleMesher::SubdivideTriangle(unsigned int vindex, unsigned int triangle_local_index) {
+	int ret = triangle_complex->SubdivideTriangle(vindex, triangle_local_index);
+}
+
+int TriangleMesher::BarycentricSubdivide(unsigned int triangle_local_index) {
+	int ret = triangle_complex->BarycentricSubdivide(triangle_local_index);
+
+	return ret;
 }
 
 int TriangleMesher::BasicTriangleMesher() {
