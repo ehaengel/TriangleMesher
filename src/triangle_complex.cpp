@@ -135,7 +135,7 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			if(index_str != "") {
 				index = (unsigned int) atoi(index_str.c_str());
 
-				if(index >= total_triangles || GetTriangle(index) != NULL) {
+				if(index == 0 || index >= total_triangles+1 || GetTriangle(index-1) != NULL) {
 					printf("FAILING HERE!\n");
 
 					delete xml_document;
@@ -166,7 +166,6 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			//Now that all the data is loaded, create a new triangle
 			Triangle* new_tri = new Triangle(global_vertex_list);
 
-			//if(index != 0)
 			new_tri->SetLocalIndex(index);
 
 			new_tri->SetVertex(0, n0);
@@ -174,7 +173,7 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			new_tri->SetVertex(2, n2);
 
 			//SetTriangle(cur_triangle_count + cur_triangles_loaded, new_tri);
-			SetTriangle(index, new_tri);
+			SetTriangle(index-1, new_tri);
 			cur_triangles_loaded++;
 		}
 	}
@@ -208,20 +207,24 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			string a2_str = triangle_tag->GetAttributeValue("a2");
 			if(a2_str != "") a2 = (unsigned int) atoi(a2_str.c_str());
 
-			if(a0 >= total_triangles || a1 >= total_triangles || a2 >= total_triangles) {
+			if(a0 >= total_triangles+1 || a1 >= total_triangles+1 || a2 >= total_triangles+1) {
 				delete xml_document;
 				return false;
 			}
 
-			Triangle* tri = GetTriangle(index);
+			Triangle* tri = GetTriangle(index-1);
 			if(tri == NULL) {
 				delete xml_document;
 				return false;
 			}
 
-			Triangle* adj_tri0 = GetTriangle(a0);
-			Triangle* adj_tri1 = GetTriangle(a1);
-			Triangle* adj_tri2 = GetTriangle(a2);
+			Triangle* adj_tri0 = NULL;
+			Triangle* adj_tri1 = NULL;
+			Triangle* adj_tri2 = NULL;
+
+			if(a0 > 0) adj_tri0 = GetTriangle(a0-1);
+			if(a1 > 0) adj_tri1 = GetTriangle(a1-1);
+			if(a2 > 0) adj_tri2 = GetTriangle(a2-1);
 
 			tri->SetAdjacentTriangle(0, adj_tri0);
 			tri->SetAdjacentTriangle(1, adj_tri1);
@@ -642,7 +645,7 @@ int TriangleComplex::RunTriangleMesher() {
 		//	return false;
 
 		//Reset the local indices of all triangles
-		unsigned int index = 0;
+		unsigned int index = 1;
 		for(unsigned int i=0; i<GetTriangleCount(); i++) {
 			Triangle* tri = GetTriangle(i);
 
@@ -665,7 +668,7 @@ int TriangleComplex::RunTriangleMesher() {
 			//	return false;
 
 			//Reset the local indices of all triangles
-			unsigned int index = 0;
+			unsigned int index = 1;
 			for(unsigned int i=0; i<GetTriangleCount(); i++) {
 				Triangle* tri = GetTriangle(i);
 
