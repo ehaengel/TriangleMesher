@@ -139,6 +139,9 @@ private:
 	//The most basic stretched grid method
 	int basic_stretched_grid_method(unsigned int iterations, double alpha);
 
+	//The force based stretched grid method
+	int force_stretched_grid_method(unsigned int iterations, double dt, double gamma);
+
 	//This function cleans up the mesh to remove extra triangles
 	int basic_mesh_cleaner();
 
