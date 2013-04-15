@@ -15,6 +15,7 @@ using namespace std;
 #include "vector2d.h"
 #include "triangle.h"
 #include "prism.h"
+#include "geometry.h"
 
 #include <omp.h>
 
