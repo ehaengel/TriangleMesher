@@ -21,8 +21,12 @@ int main(int argc, char** argv) {
 
 	TriangleComplex* tc = triangle_mesher.GetTriangleComplex();
 
+	Prism p;
+	p.SetMin(atof(argv[2]), atof(argv[3]));
+	p.SetMax(atof(argv[4]), atof(argv[5]));
+
 	vector<Edge*> edge_list;
-	tc->GetEdges(edge_list);
+	tc->GetEdgesInsidePrism(edge_list, p);
 	printf("edge count: %u\n", edge_list.size());
 
 	for(unsigned int i=0; i<edge_list.size(); i++)

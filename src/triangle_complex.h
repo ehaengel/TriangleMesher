@@ -106,6 +106,9 @@ public:
 	//This function creates a list of edges for the whole complex
 	int GetEdges(vector<Edge*> &result);
 
+	//This function creates a list of edges overlapping a prism
+	int GetEdgesInsidePrism(vector<Edge*> &result, Prism p);
+
 	//Compute statistics on the edges in this complex/overlapping the given prism
 	// + if inside_prism is true then edges of triangles overlapping p are considered
 	// + otherwise all the edges of all triangles are taken into count

@@ -26,6 +26,16 @@ int Prism::SetMinMax(Vector2d min, Vector2d max) {
 	return true;
 }
 
+int Prism::SetMin(double x, double y) {
+	this->min = Vector2d(x, y);
+	return true;
+}
+
+int Prism::SetMax(double x, double y) {
+	this->max = Vector2d(x, y);
+	return true;
+}
+
 Vector2d Prism::GetMin() {
 	return min;
 }

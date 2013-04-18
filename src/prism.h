@@ -23,6 +23,9 @@ public:
 	int SetMax(Vector2d max);
 	int SetMinMax(Vector2d min, Vector2d max);
 
+	int SetMin(double x, double y);
+	int SetMax(double x, double y);
+
 	Vector2d GetMin();
 	Vector2d GetMax();
 

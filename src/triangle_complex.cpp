@@ -828,6 +828,57 @@ int TriangleComplex::GetEdges(vector<Edge*> &result) {
 	return true;
 }
 
+//This function creates a list of edges overlapping a prism
+int TriangleComplex::GetEdgesInsidePrism(vector<Edge*> &result, Prism p) {
+	result.clear();
+
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL)
+			continue;
+
+		for(int j=0; j<3; j++) {
+			Edge* e = NULL;
+			tri->GetOpposingEdge(e, j);
+
+			//Make sure this is a good edge
+			if(e->IsGoodEdge() == false)
+				continue;
+
+			Vector2d* p1 = e->GetVertex(0);
+			Vector2d* p2 = e->GetVertex(1);
+			if(p1 == NULL || p2 == NULL)
+				continue;
+
+			if(prism_line_segment_intersection_closed(p, *p1, *p2) == false)
+				continue;
+
+			//Look through the results to put it in the right spot
+			int inserted = false;
+			for(unsigned int k=0; k<result.size(); k++) {
+				//If the edge is in the list already, skip it
+				if((*result[k]) == (*e)) {
+					delete e;
+					inserted = true;
+					break;
+				}
+
+				//We have found the right insertion point
+				if((*e) < (*result[k])) {
+					result.insert(result.begin() + k, e);
+					inserted = true;
+					break;
+				}
+			}
+			//If the edge was not found already and has yet to be inserted, put it at the end of the list
+			if(inserted == false)
+				result.push_back(e);
+		}
+	}
+
+	return true;
+}
+
 //This function creates a list with one integer per triangle
 // + this integer is 0 if the corresponding triangle from GetTriangle(...) does not overlap p
 // + this integer is 1 if the corresponding triangle from GetTriangle(...) does overlap p
