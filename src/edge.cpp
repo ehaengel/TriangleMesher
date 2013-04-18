@@ -132,6 +132,20 @@ Vector2d* Edge::GetGlobalVertex(unsigned int vindex) {
 	return (*global_vertex_list)[vindex];
 }
 
+////////////////////////////////
+// Geometry related functions //
+////////////////////////////////
+
+//Computes the length of this edge
+// + returns 0.0 if the edge is bad
+double Edge::ComputeLength() {
+	Vector2d* p1 = GetVertex(0);
+	Vector2d* p2 = GetVertex(1);
+	if(p1 == NULL || p2 == NULL)
+		return 0.0;
+
+	return p1->distance(*p2);
+}
 
 //Returns true iff both vertices are not the null vertex
 int Edge::IsGoodEdge() {

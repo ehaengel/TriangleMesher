@@ -785,6 +785,23 @@ int TriangleComplex::GetTrianglesInsidePrism(vector<Triangle*> &result, Prism p)
 	return true;
 }
 
+//This function creates a list with one integer per triangle
+// + this integer is 0 if the corresponding triangle from GetTriangle(...) does not overlap p
+// + this integer is 1 if the corresponding triangle from GetTriangle(...) does overlap p
+int TriangleComplex::GetTrianglesInsidePrism(vector<int> &result, Prism p) {
+	result.clear();
+	result.resize(GetTriangleCount(), false);
+
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		if(tri != NULL && prism_triangle_intersection_closed(p, *tri) == true)
+			result[i] = true;
+	}
+
+	return true;
+}
+
 //This function creates a list of edges for the whole complex
 int TriangleComplex::GetEdges(vector<Edge*> &result) {
 	result.clear();
@@ -879,83 +896,60 @@ int TriangleComplex::GetEdgesInsidePrism(vector<Edge*> &result, Prism p) {
 	return true;
 }
 
-//This function creates a list with one integer per triangle
-// + this integer is 0 if the corresponding triangle from GetTriangle(...) does not overlap p
-// + this integer is 1 if the corresponding triangle from GetTriangle(...) does overlap p
-int TriangleComplex::GetTrianglesInsidePrism(vector<int> &result, Prism p) {
-	result.clear();
-	result.resize(GetTriangleCount(), false);
 
-	for(unsigned int i=0; i<GetTriangleCount(); i++) {
-		Triangle* tri = GetTriangle(i);
+//Compute the average edge length of a list of edges
+int TriangleComplex::ComputeAverageEdgeLength(double& result, vector<Edge*> edge_list) {
+	result = 0.0;
 
-		if(tri != NULL && prism_triangle_intersection_closed(p, *tri) == true)
-			result[i] = true;
-	}
+	double edge_count = double(edge_list.size());
+	for(unsigned int i=0; i<edge_list.size(); i++)
+		result += edge_list[i]->ComputeLength() / edge_count;
 
 	return true;
 }
 
-//Compute statistics on the edges in this complex/overlapping the given prism
-// + if inside_prism is true p is used, otherwise all the edges of all triangles are taken into count
-int TriangleComplex::ComputeEdgeStatistics(unsigned int& edge_count, double& avg_edge_length, int inside_prism, Prism p) {
-	vector<int> use_triangle;
-	use_triangle.resize(GetTriangleCount(), true);
+//Compute statistics on the edges in this complex
+int TriangleComplex::ComputeEdgeStatistics(unsigned int& edge_count, double& average_edge_length) {
+	edge_count = 0;
+	average_edge_length = 0.0;
 
-	if(inside_prism == true)
-		GetTrianglesInsidePrism(use_triangle, p);
+	//Get a list of all the edges
+	vector<Edge*> edge_list;
+	if(GetEdges(edge_list) == false)
+		return false;
 
-	double total_edge_count = 0.0;
-	double average_edge_length = 0.0;
+	//Do the computations here
+	edge_count = edge_list.size();
+	ComputeAverageEdgeLength(average_edge_length, edge_list);
 
-	/*for(unsigned int i=0; i<GetTriangleCount(); i++) {
-		Triangle* tri = GetTriangle(i);
-		if(tri == NULL || use_triangle[i] == false)
-			continue;
-
-		for(int j=0; j<3; j++) {
-			unsigned int vj_index = tri->GetVertexIndex(j);
-
-			Vector2d* vj = tri->GetVertex(j);
-			if(vj == NULL)
-				continue;
-
-			Vector2d* v1 = NULL;
-			Vector2d* v2 = NULL;
-
-			Triangle* adj1 = NULL;
-			Triangle* adj2 = NULL;
-
-			if(tri->GetAdjacentVerticesTriangles(j, v1, v2, adj1, adj2) != false) {
-				if(adj2 == NULL) {
-					average_edge_length += vj->distance(*v1) * 0.5;
-					total_edge_count += 0.5;
-				}
-				else {
-					average_edge_length += vj->distance(*v1) * 0.25;
-					total_edge_count += 0.25;
-				}
-
-				if(adj1 == NULL) {
-					average_edge_length += vj->distance(*v2) * 0.5;
-					total_edge_count += 0.5;
-				}
-				else {
-					average_edge_length += vj->distance(*v2) * 0.25;
-					total_edge_count += 0.25;
-				}
-			}
-		}
-	}
-	average_edge_length /= total_edge_count;
-	printf("Averaged edge length: %f\n", average_edge_length);
-	printf("Total edge count: %f\n", total_edge_count);*/
-
-	edge_count = (unsigned int) fabs(total_edge_count);
-	avg_edge_length = average_edge_length;
+	//Clean up the data
+	for(unsigned int i=0; i<edge_list.size(); i++)
+		delete edge_list[i];
 
 	return true;
 }
+
+//Compute statistics on the edges overlapping a prism
+int TriangleComplex::ComputeEdgeStatisticsInsidePrism(unsigned int& edge_count, double& average_edge_length, Prism p) {
+	edge_count = 0;
+	average_edge_length = 0.0;
+
+	//Get a list of all the edges
+	vector<Edge*> edge_list;
+	if(GetEdgesInsidePrism(edge_list, p) == false)
+		return false;
+
+	//Do the computations here
+	edge_count = edge_list.size();
+	ComputeAverageEdgeLength(average_edge_length, edge_list);
+
+	//Clean up the data
+	for(unsigned int i=0; i<edge_list.size(); i++)
+		delete edge_list[i];
+
+	return true;
+}
+
 
 
 ////////////////////////////////

@@ -25,12 +25,11 @@ int main(int argc, char** argv) {
 	p.SetMin(atof(argv[2]), atof(argv[3]));
 	p.SetMax(atof(argv[4]), atof(argv[5]));
 
-	vector<Edge*> edge_list;
-	tc->GetEdgesInsidePrism(edge_list, p);
-	printf("edge count: %u\n", edge_list.size());
-
-	for(unsigned int i=0; i<edge_list.size(); i++)
-		printf("%u %u\n", edge_list[i]->GetVertexIndex(0), edge_list[i]->GetVertexIndex(1));
+	unsigned int edge_count;
+	double avg_edge_length;
+	tc->ComputeEdgeStatisticsInsidePrism(edge_count, avg_edge_length, p);
+	printf("edge count: %u\n", edge_count);
+	printf("average edge length: %f\n", avg_edge_length);
 
 	return 0;
 }

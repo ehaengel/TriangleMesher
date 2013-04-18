@@ -39,6 +39,13 @@ public:
 
 	Vector2d* GetGlobalVertex(unsigned int vindex);
 
+	////////////////////////////////
+	// Geometry related functions //
+	////////////////////////////////
+
+	//Computes the length of this edge
+	// + returns 0.0 if the edge is bad
+	double ComputeLength();
 
 	//Returns true iff both vertices are not the null vertex
 	int IsGoodEdge();

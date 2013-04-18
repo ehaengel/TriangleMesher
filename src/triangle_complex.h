@@ -109,10 +109,14 @@ public:
 	//This function creates a list of edges overlapping a prism
 	int GetEdgesInsidePrism(vector<Edge*> &result, Prism p);
 
-	//Compute statistics on the edges in this complex/overlapping the given prism
-	// + if inside_prism is true then edges of triangles overlapping p are considered
-	// + otherwise all the edges of all triangles are taken into count
-	int ComputeEdgeStatistics(unsigned int& edge_count, double& avg_edge_length, int inside_prism, Prism p);
+	//Compute the average edge length of a list of edges
+	int ComputeAverageEdgeLength(double& result, vector<Edge*> edge_list);
+
+	//Compute statistics on the edges in this complex
+	int ComputeEdgeStatistics(unsigned int& edge_count, double& average_edge_length);
+
+	//Compute statistics on the edges overlapping a prism
+	int ComputeEdgeStatisticsInsidePrism(unsigned int& edge_count, double& average_edge_length, Prism p);
 
 	////////////////////////////////
 	// K-d tree related functions //
