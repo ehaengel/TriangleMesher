@@ -298,6 +298,36 @@ int Triangle::TestAdjacency(Triangle* tri, int& opposing_vertex, int& tri_opposi
 	return false;
 }
 
+//Edges
+int Triangle::GetOpposingEdge(Edge* &e, int opposing_vertex) {
+	e = new Edge(global_vertex_list);
+
+	if(opposing_vertex == 0) {
+		e->SetVertex(0, GetVertexIndex(1));
+		e->SetVertex(1, GetVertexIndex(2));
+	}
+	else if(opposing_vertex == 1) {
+		e->SetVertex(0, GetVertexIndex(2));
+		e->SetVertex(1, GetVertexIndex(0));
+	}
+	else if(opposing_vertex == 2) {
+		e->SetVertex(0, GetVertexIndex(0));
+		e->SetVertex(1, GetVertexIndex(1));
+	}
+	else
+		return false;
+
+	return true;
+}
+
+int Triangle::GetEdges(Edge* &e1, Edge* &e2, Edge* &e3) {
+	GetOpposingEdge(e1, 0);
+	GetOpposingEdge(e2, 1);
+	GetOpposingEdge(e3, 2);
+
+	return true;
+}
+
 unsigned int Triangle::GetLocalIndex() {
 	return local_index;
 }

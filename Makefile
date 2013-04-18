@@ -8,6 +8,7 @@ all_objects:
 	g++ src/vector2d.cpp -c -o vector2d.o $(CFLAGS)
 	g++ src/triangle.cpp -c -o triangle.o $(CFLAGS)
 	g++ src/prism.cpp -c -o prism.o $(CFLAGS)
+	g++ src/edge.cpp -c -o edge.o $(CFLAGS)
 	g++ src/geometry.cpp -c -o geometry.o $(CFLAGS)
 
 	g++ -fopenmp src/triangle_complex.cpp -c -o triangle_complex.o $(CFLAGS)

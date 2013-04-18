@@ -4,8 +4,9 @@
 #include <vector>
 using namespace std;
 
-#include "vector2d.h"
 #include "utility.h"
+#include "vector2d.h"
+#include "edge.h"
 
 #ifndef TRIANGLE
 #define TRIANGLE
@@ -48,6 +49,10 @@ public:
 	Triangle* GetAdjacentTriangle(int opposing_vertex);
 
 	int TestAdjacency(Triangle* tri, int& opposing_vertex, int& tri_opposing_vertex);
+
+	//Edges
+	int GetOpposingEdge(Edge* &e, int opposing_vertex);
+	int GetEdges(Edge* &e1, Edge* &e2, Edge* &e3);
 
 	//Local index
 	unsigned int GetLocalIndex();

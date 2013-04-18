@@ -4,6 +4,7 @@
 #include "utility.h"
 #include "vector2d.h"
 #include "prism.h"
+#include "edge.h"
 #include "triangle.h"
 
 #ifndef GEOMETRY
@@ -19,6 +20,9 @@ int point_line_intersection(Vector2d pt, Vector2d v1, Vector2d v2);
 //Returns true if the two line segments overlap
 int line_segment_intersection(Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2);
 int line_segment_intersection(Vector2d& res_pt, Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2);
+
+//Returns true is the prism and line segment overlap
+int prism_line_segment_intersection_closed(Prism p, Vector2d v1, Vector2d v2);
 
 //Returns true if the prism and triangle overlap
 // + these tests assume that tri is oriented

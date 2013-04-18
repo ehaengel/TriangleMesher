@@ -2,6 +2,17 @@
 
 //Returns true if the two closed intervals overlap
 int closed_interval_intersection(double a1, double b1, double a2, double b2) {
+	if(a1 > b1) {
+		double buf = a1;
+		a1 = b1;
+		b1 = buf;
+	}
+	if(a2 > b2) {
+		double buf = a2;
+		a2 = b2;
+		b2 = buf;
+	}
+
 	if(a1 <= a2 && b1 >= a2 && b1 <= b2)
 		return true;
 
@@ -18,6 +29,17 @@ int closed_interval_intersection(double a1, double b1, double a2, double b2) {
 }
 
 int closed_interval_intersection(double& res_a, double& res_b, double a1, double b1, double a2, double b2) {
+	if(a1 > b1) {
+		double buf = a1;
+		a1 = b1;
+		b1 = buf;
+	}
+	if(a2 > b2) {
+		double buf = a2;
+		a2 = b2;
+		b2 = buf;
+	}
+
 	res_a = 0.0;
 	res_b = 0.0;
 
@@ -66,6 +88,40 @@ int point_line_intersection(Vector2d pt, Vector2d v1, Vector2d v2) {
 int line_segment_intersection(Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2) {
 	Vector2d res_pt;
 	return line_segment_intersection(res_pt, v1, v2, w1, w2);
+}
+
+
+//Returns true is the prism and line segment overlap
+int prism_line_segment_intersection_closed(Prism p, Vector2d v1, Vector2d v2) {
+	double x1, x2;
+	double y1, y2;
+
+	if(closed_interval_intersection(x1, x2, p.GetMin().x, p.GetMax().x, v1.x, v2.x) == false)
+		return false;
+
+	if(closed_interval_intersection(y1, y2, p.GetMin().y, p.GetMax().y, v1.y, v2.y) == false)
+		return false;
+
+	double t1, t2, t3, t4;
+
+	if(fabs(v1.x - v2.x) > EFF_ZERO) {
+		t1 = (x1 - v1.x) / (v2.x - v1.x);
+		t2 = (x2 - v1.x) / (v2.x - v1.x);
+	}
+	else
+		return true;
+
+	if(fabs(v1.y - v2.y) > EFF_ZERO) {
+		t3 = (y1 - v1.y) / (v2.y - v1.y);
+		t4 = (y2 - v1.y) / (v2.y - v1.y);
+	}
+	else
+		return true;
+
+	if(closed_interval_intersection(t1, t2, t3, t4) == false)
+		return false;
+
+	return true;
 }
 
 int line_segment_intersection(Vector2d& res_pt, Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2) {
@@ -148,7 +204,7 @@ int prism_triangle_intersection_open(Prism p, Triangle tri) {
 		return true;
 
 	//Test if the left side of the prism is a splitting plane
-	if(tv1->x < left_x && tv2->x <= left_x && tv3->x <= left_x)
+	if(tv1->x <= left_x && tv2->x <= left_x && tv3->x <= left_x)
 		return true;
 
 	//Test if the bottom side of the prism is a splitting plane
@@ -174,6 +230,69 @@ int prism_triangle_intersection_open(Prism p, Triangle tri) {
 		tri.TestPointEdgeOrientation(2, pv2) >= 0 &&
 		tri.TestPointEdgeOrientation(2, pv3) >= 0 &&
 		tri.TestPointEdgeOrientation(2, pv4) >= 0)
+		return true;
+
+	//No splitting plane could be found, these must overlap
+	return false;
+}
+
+int prism_triangle_intersection_closed(Prism p, Triangle tri) {
+	bool test1, test2, test3, test4;
+
+	//The triangle vertices
+	Vector2d* tv1 = tri.GetVertex(0);
+	Vector2d* tv2 = tri.GetVertex(1);
+	Vector2d* tv3 = tri.GetVertex(2);
+	if(tv1 == NULL || tv2 == NULL || tv3 == NULL)
+		return false;
+
+	//The prism vertices
+	Vector2d pv1 = p.GetMin();
+	Vector2d pv2 = Vector2d(p.GetMin().x, p.GetMax().y);
+	Vector2d pv3 = p.GetMax();
+	Vector2d pv4 = Vector2d(p.GetMax().x, p.GetMin().y);
+
+	//The prism faces
+	double right_x = p.GetMin().x;
+	double left_x = p.GetMax().x;
+	double top_y = p.GetMax().y;
+	double bottom_y = p.GetMin().y;
+
+	//Test if the right side of the prism is a splitting plane
+	if(tv1->x > right_x && tv2->x > right_x && tv3->x > right_x)
+		return true;
+
+	//Test if the top side of the prism is a splitting plane
+	if(tv1->y > top_y && tv2->y > top_y && tv3->y > top_y)
+		return true;
+
+	//Test if the left side of the prism is a splitting plane
+	if(tv1->x < left_x && tv2->x < left_x && tv3->x < left_x)
+		return true;
+
+	//Test if the bottom side of the prism is a splitting plane
+	if(tv1->y < bottom_y && tv2->y < bottom_y && tv3->y < bottom_y)
+		return true;
+
+	//Test if side 0 of the triangle is a splitting plane
+	if(tri.TestPointEdgeOrientation(0, pv1) == 1 &&
+		tri.TestPointEdgeOrientation(0, pv2) == 1 &&
+		tri.TestPointEdgeOrientation(0, pv3) == 1 &&
+		tri.TestPointEdgeOrientation(0, pv4) == 1)
+		return true;
+
+	//Test if side 1 of the triangle is a splitting plane
+	if(tri.TestPointEdgeOrientation(1, pv1) == 1 &&
+		tri.TestPointEdgeOrientation(1, pv2) == 1 &&
+		tri.TestPointEdgeOrientation(1, pv3) == 1 &&
+		tri.TestPointEdgeOrientation(1, pv4) == 1)
+		return true;
+
+	//Test if side 2 of the triangle is a splitting plane
+	if(tri.TestPointEdgeOrientation(2, pv1) == 1 &&
+		tri.TestPointEdgeOrientation(2, pv2) == 1 &&
+		tri.TestPointEdgeOrientation(2, pv3) == 1 &&
+		tri.TestPointEdgeOrientation(2, pv4) == 1)
 		return true;
 
 	//No splitting plane could be found, these must overlap

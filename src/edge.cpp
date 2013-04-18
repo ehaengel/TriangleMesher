@@ -56,6 +56,12 @@ int Edge::operator==(Edge e) {
 ///////////////////////////////
 
 int Edge::SetVertices(unsigned int v1, unsigned int v2) {
+	if(v1 == 0 || v2 == 0) {
+		this->v1 = 0;
+		this->v2 = 0;
+		return false;
+	}
+
 	if(v1 < v2) {
 		this->v1 = v1;
 		this->v2 = v2;
@@ -67,10 +73,43 @@ int Edge::SetVertices(unsigned int v1, unsigned int v2) {
 	}
 
 	else {
+		this->v1 = 0;
+		this->v2 = 0;
+		return false;
+	}
+
+	return true;
+}
+
+int Edge::SetVertex(int vertex, unsigned int vindex) {
+	if(vindex == 0) {
 		v1 = 0;
 		v2 = 0;
 		return false;
 	}
+
+	if(vertex == 0) {
+		v1 = vindex;
+
+		if(v2 != 0 && v1 > v2) {
+			unsigned int buf = v1;
+			v1 = v2;
+			v2 = buf;
+		}
+	}
+
+	else if(vertex == 1) {
+		v2 = vindex;
+
+		if(v1 != 0 && v2 < v1) {
+			unsigned int buf = v1;
+			v1 = v2;
+			v2 = buf;
+		}
+	}
+
+	else
+		return false;
 
 	return true;
 }
@@ -93,3 +132,8 @@ Vector2d* Edge::GetGlobalVertex(unsigned int vindex) {
 	return (*global_vertex_list)[vindex];
 }
 
+
+//Returns true iff both vertices are not the null vertex
+int Edge::IsGoodEdge() {
+	return (v1 > 0 && v2 > 0);
+}

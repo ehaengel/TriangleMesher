@@ -32,11 +32,16 @@ public:
 	///////////////////////////////
 
 	int SetVertices(unsigned int v1, unsigned int v2);
+	int SetVertex(int vertex, unsigned int vindex);
 
 	unsigned int GetVertexIndex(int vertex);
 	Vector2d* GetVertex(int vertex);
 
 	Vector2d* GetGlobalVertex(unsigned int vindex);
+
+
+	//Returns true iff both vertices are not the null vertex
+	int IsGoodEdge();
 
 private:
 	//The two vertices for this edge

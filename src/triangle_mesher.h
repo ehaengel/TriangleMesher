@@ -83,6 +83,12 @@ public:
 
 	int StretchedGrid(unsigned int iterations, double alpha);
 
+	/////////////////////
+	// Data management //
+	/////////////////////
+
+	TriangleComplex* GetTriangleComplex();
+
 private:
 	//Data regarding the mesher command stack
 	vector<MesherCommand*> mesher_command_stack;

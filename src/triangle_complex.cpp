@@ -768,7 +768,148 @@ int TriangleComplex::StretchedGridMethod(unsigned int iterations, double alpha) 
 }
 
 
-//K-d tree related functions
+/////////////////////////////
+// Mesh Geometry functions //
+/////////////////////////////
+
+//This functon fills a list with triangles which overlap a prism
+int TriangleComplex::GetTrianglesInsidePrism(vector<Triangle*> &result, Prism p) {
+	result.clear();
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		if(tri != NULL && prism_triangle_intersection_closed(p, *tri) == true)
+			result.push_back(tri);
+	}
+
+	return true;
+}
+
+//This function creates a list of edges for the whole complex
+int TriangleComplex::GetEdges(vector<Edge*> &result) {
+	result.clear();
+
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL)
+			continue;
+
+		for(int j=0; j<3; j++) {
+			Edge* e = NULL;
+			tri->GetOpposingEdge(e, j);
+
+			//Make sure this is a good edge
+			if(e->IsGoodEdge() == false)
+				continue;
+
+			//Look through the results to put it in the right spot
+			int inserted = false;
+			for(unsigned int k=0; k<result.size(); k++) {
+				//If the edge is in the list already, skip it
+				if((*result[k]) == (*e)) {
+					delete e;
+					inserted = true;
+					break;
+				}
+
+				//We have found the right insertion point
+				if((*e) < (*result[k])) {
+					result.insert(result.begin() + k, e);
+					inserted = true;
+					break;
+				}
+			}
+			//If the edge was not found already and has yet to be inserted, put it at the end of the list
+			if(inserted == false)
+				result.push_back(e);
+		}
+	}
+
+	return true;
+}
+
+//This function creates a list with one integer per triangle
+// + this integer is 0 if the corresponding triangle from GetTriangle(...) does not overlap p
+// + this integer is 1 if the corresponding triangle from GetTriangle(...) does overlap p
+int TriangleComplex::GetTrianglesInsidePrism(vector<int> &result, Prism p) {
+	result.clear();
+	result.resize(GetTriangleCount(), false);
+
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+
+		if(tri != NULL && prism_triangle_intersection_closed(p, *tri) == true)
+			result[i] = true;
+	}
+
+	return true;
+}
+
+//Compute statistics on the edges in this complex/overlapping the given prism
+// + if inside_prism is true p is used, otherwise all the edges of all triangles are taken into count
+int TriangleComplex::ComputeEdgeStatistics(unsigned int& edge_count, double& avg_edge_length, int inside_prism, Prism p) {
+	vector<int> use_triangle;
+	use_triangle.resize(GetTriangleCount(), true);
+
+	if(inside_prism == true)
+		GetTrianglesInsidePrism(use_triangle, p);
+
+	double total_edge_count = 0.0;
+	double average_edge_length = 0.0;
+
+	/*for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL || use_triangle[i] == false)
+			continue;
+
+		for(int j=0; j<3; j++) {
+			unsigned int vj_index = tri->GetVertexIndex(j);
+
+			Vector2d* vj = tri->GetVertex(j);
+			if(vj == NULL)
+				continue;
+
+			Vector2d* v1 = NULL;
+			Vector2d* v2 = NULL;
+
+			Triangle* adj1 = NULL;
+			Triangle* adj2 = NULL;
+
+			if(tri->GetAdjacentVerticesTriangles(j, v1, v2, adj1, adj2) != false) {
+				if(adj2 == NULL) {
+					average_edge_length += vj->distance(*v1) * 0.5;
+					total_edge_count += 0.5;
+				}
+				else {
+					average_edge_length += vj->distance(*v1) * 0.25;
+					total_edge_count += 0.25;
+				}
+
+				if(adj1 == NULL) {
+					average_edge_length += vj->distance(*v2) * 0.5;
+					total_edge_count += 0.5;
+				}
+				else {
+					average_edge_length += vj->distance(*v2) * 0.25;
+					total_edge_count += 0.25;
+				}
+			}
+		}
+	}
+	average_edge_length /= total_edge_count;
+	printf("Averaged edge length: %f\n", average_edge_length);
+	printf("Total edge count: %f\n", total_edge_count);*/
+
+	edge_count = (unsigned int) fabs(total_edge_count);
+	avg_edge_length = average_edge_length;
+
+	return true;
+}
+
+
+////////////////////////////////
+// K-d tree related functions //
+////////////////////////////////
 int TriangleComplex::CreateKDTree() {
 	//The top node creates a global kd prism
 	if(kd_parent == NULL) {

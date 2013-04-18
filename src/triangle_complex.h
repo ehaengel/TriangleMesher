@@ -15,6 +15,7 @@ using namespace std;
 #include "vector2d.h"
 #include "triangle.h"
 #include "prism.h"
+#include "edge.h"
 #include "geometry.h"
 
 #include <omp.h>
@@ -43,6 +44,7 @@ public:
 	// Data management functions //
 	///////////////////////////////
 
+	//Data management for triangles
 	unsigned int GetTriangleCount();
 	Triangle* GetTriangle(unsigned int tindex);
 
@@ -54,6 +56,7 @@ public:
 
 	int DeleteTriangle(unsigned int tindex);
 
+	//Data management for local/global vertices
 	unsigned int GetVertexCount();
 	unsigned int GetVertexIndex(unsigned int vertex);
 
@@ -63,10 +66,12 @@ public:
 	int SetVertexIndex(unsigned int vertex, unsigned int vindex);
 	int AppendVertexIndex(unsigned int vindex);
 
+	//Generate some regular/random vertex sets
 	int GenerateRandomGrid(double xmin, double xmax, double ymin, double ymax, unsigned int vertex_count);
 	int GenerateUniformGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount);
 	int GenerateHexGrid(double xmin, double xmax, double ymin, double ymax, unsigned int xcount, unsigned int ycount);
 
+	//These have to do with the meshing process
 	vector<unsigned int> GetIncompleteVertices();
 	vector<double> GetIncompleteVerticesAngles();
 
@@ -85,6 +90,26 @@ public:
 	int BarycentricSubdivide(unsigned int triangle_local_index);
 
 	int StretchedGridMethod(unsigned int iterations, double alpha);
+
+	/////////////////////////////
+	// Mesh Geometry functions //
+	/////////////////////////////
+
+	//This functon fills a list with triangles which overlap a prism
+	int GetTrianglesInsidePrism(vector<Triangle*> &result, Prism p);
+
+	//This function creates a list with one integer per triangle
+	// + this integer is 0 if the corresponding triangle from GetTriangle(...) does not overlap p
+	// + this integer is 1 if the corresponding triangle from GetTriangle(...) does overlap p
+	int GetTrianglesInsidePrism(vector<int> &result, Prism p);
+
+	//This function creates a list of edges for the whole complex
+	int GetEdges(vector<Edge*> &result);
+
+	//Compute statistics on the edges in this complex/overlapping the given prism
+	// + if inside_prism is true then edges of triangles overlapping p are considered
+	// + otherwise all the edges of all triangles are taken into count
+	int ComputeEdgeStatistics(unsigned int& edge_count, double& avg_edge_length, int inside_prism, Prism p);
 
 	////////////////////////////////
 	// K-d tree related functions //

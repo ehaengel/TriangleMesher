@@ -275,3 +275,12 @@ int TriangleMesher::StretchedGrid(unsigned int iterations, double alpha) {
 
 	return ret;
 }
+
+/////////////////////
+// Data management //
+/////////////////////
+
+TriangleComplex* TriangleMesher::GetTriangleComplex() {
+	return triangle_complex;
+}
+
