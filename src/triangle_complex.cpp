@@ -2050,21 +2050,37 @@ int TriangleComplex::basic_stretched_grid_method(unsigned int iterations, double
 }
 
 //The force based stretched grid method
-int TriangleComplex::force_stretched_grid_method(unsigned int iterations, double dt, double gamma) {
-	double alpha = 0.01;
-
-	//These are used by the SGM algorithm and are pre-calculated here
-	vector<unsigned int> vertex_triangle_count;
-	vector<bool> vertex_clamped;
-	vector<double> vertex_angles;
-
+int TriangleComplex::force_stretched_grid_method() {
+	//First collect all the edge information
+	vector<Edge*> edge_list;
 	double average_edge_length = 0.0;
-	double total_edge_count = 0.0;
 
+	if(GetEdges(edge_list) == false)
+		return false;
+
+	if(ComputeAverageEdgeLength(average_edge_length, edge_list) == false)
+		return false;
+
+	//Next create some data that will be used by the algorithm
+	vector<int> use_vertex;
+	vector<double> vertex_angle;
+	vector<unsigned int> vertex_triangle_count;
+
+	vector<Vector2d> vertex_velocity;
+	vector<Vector2d> vertex_force;
+
+	unsigned int iterations = 100;
+	double dt = 0.01;
+
+	//Resize some lists
+	use_vertex.resize(global_vertex_list->size(), false);
+	vertex_angle.resize(global_vertex_list->size(), 0.0);
 	vertex_triangle_count.resize(global_vertex_list->size(), 0);
-	vertex_clamped.resize(global_vertex_list->size(), true);
-	vertex_angles.resize(global_vertex_list->size(), 0.0);
 
+	vertex_velocity.resize(global_vertex_list->size(), Vector2d(0,0));
+	vertex_force.resize(global_vertex_list->size(), Vector2d(0,0));
+
+	//Do some calculations to see which vertices to actually use
 	for(unsigned int i=0; i<GetTriangleCount(); i++) {
 		Triangle* tri = GetTriangle(i);
 		if(tri == NULL)
@@ -2076,7 +2092,7 @@ int TriangleComplex::force_stretched_grid_method(unsigned int iterations, double
 			double vj_angle = 0.0;
 			if(tri->GetVertexAngle(j, vj_angle) == true) {
 				vertex_triangle_count[vj_index]++;
-				vertex_angles[vj_index] += vj_angle;
+				vertex_angle[vj_index] += vj_angle;
 			}
 		}
 	}
@@ -2084,109 +2100,39 @@ int TriangleComplex::force_stretched_grid_method(unsigned int iterations, double
 	for(unsigned int i=0; i<GetVertexCount(); i++) {
 		unsigned int vindex = GetVertexIndex(i);
 
-		if(vertex_angles[vindex] < 6.28318)
+		if(vertex_angle[vindex] < 6.28318)
 			continue;
 
 		if(vertex_triangle_count[vindex] == 0)
 			continue;
 
-		vertex_clamped[vindex] = false;
+		use_vertex[vindex] = true;
 	}
 
-	for(unsigned int i=0; i<GetTriangleCount(); i++) {
-		Triangle* tri = GetTriangle(i);
-		if(tri == NULL)
-			continue;
+	//Run the actual stretched grid algorithm
+	for(unsigned int iter=0; iter<iterations; iter++) {
+		//Reset the vertex forces
+		for(unsigned int i=0; i<vertex_force.size(); i++) {
+			vertex_force[i].x = 0.0;
+			vertex_force[i].y = 0.0;
+		}
 
-		for(int j=0; j<3; j++) {
-			unsigned int vj_index = tri->GetVertexIndex(j);
+		//Calculate the force on each vertex with the edge list
+		for(unsigned int i=0; i<edge_list.size(); i++) {
+		}
 
-			Vector2d* vj = tri->GetVertex(j);
-			if(vj == NULL)
-				continue;
+		//Update velocity and position
+		for(unsigned int i=0; i<GetVertexCount(); i++) {
+			unsigned int vindex = GetVertexIndex(i);
+			Vector2d* pt = GetVertex(i);
 
-			Vector2d* v1 = NULL;
-			Vector2d* v2 = NULL;
-
-			Triangle* adj1 = NULL;
-			Triangle* adj2 = NULL;
-
-			if(tri->GetAdjacentVerticesTriangles(j, v1, v2, adj1, adj2) != false) {
-				if(adj2 == NULL) {
-					average_edge_length += vj->distance(*v1) * 0.5;
-					total_edge_count += 0.5;
-				}
-				else {
-					average_edge_length += vj->distance(*v1) * 0.25;
-					total_edge_count += 0.25;
-				}
-
-				if(adj1 == NULL) {
-					average_edge_length += vj->distance(*v2) * 0.5;
-					total_edge_count += 0.5;
-				}
-				else {
-					average_edge_length += vj->distance(*v2) * 0.25;
-					total_edge_count += 0.25;
-				}
+			if(use_vertex[vindex] == true && pt != NULL) {
+				vertex_velocity[vindex] += (vertex_force[vindex] * dt);
+				*pt = *pt + (vertex_velocity[vindex] * dt);
 			}
 		}
 	}
-	average_edge_length /= total_edge_count;
-	printf("Averaged edge length: %f\n", average_edge_length);
-	printf("Total edge count: %f\n", total_edge_count);
 
-	//Run the stretched grid method
-	for(int iter=0; iter<iterations; iter++) {
-		vector<Vector2d> vertex_adjustments;
-		vertex_adjustments.resize(global_vertex_list->size(), Vector2d(0, 0));
-
-		for(unsigned int i=0; i<GetTriangleCount(); i++) {
-			Triangle* tri = GetTriangle(i);
-			if(tri == NULL)
-				continue;
-
-			for(int j=0; j<3; j++) {
-				unsigned int vj_index = tri->GetVertexIndex(j);
-
-				Vector2d* vj = tri->GetVertex(j);
-				if(vj == NULL)
-					continue;
-
-				if(vertex_clamped[vj_index] == false) {
-					Vector2d* v1 = NULL;
-					Vector2d* v2 = NULL;
-
-					Triangle* adj1 = NULL;
-					Triangle* adj2 = NULL;
-					if(tri->GetAdjacentVerticesTriangles(j, v1, v2, adj1, adj2) != false) {
-						if(adj2 == NULL)
-							vertex_adjustments[vj_index] += (*v1 - *vj) * 0.5;
-
-						else
-							vertex_adjustments[vj_index] += (*v1 - *vj) * 0.25;
-
-						if(adj1 == NULL)
-							vertex_adjustments[vj_index] += (*v2 - *vj) * 0.5;
-
-						else
-							vertex_adjustments[vj_index] += (*v2 - *vj) * 0.25;
-
-					}
-				}
-			}
-		}
-
-		for(unsigned int i=0; i<global_vertex_list->size(); i++) {
-			if(vertex_clamped[i] == false) {
-				Vector2d* v = GetGlobalVertex(i);
-				if(v == NULL)
-					continue;
-
-				(*v) = (*v) + (vertex_adjustments[i] * (alpha/vertex_triangle_count[i]));
-			}
-		}
-	}
 
 	printf("DONE WITH STRETCHED GRID!\n");
 	return true;
