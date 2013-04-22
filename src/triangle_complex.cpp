@@ -306,7 +306,6 @@ int TriangleComplex::WriteToFile(const char* filename) {
 				triangle_node_tag->AppendTagAttribute(string(buffer), adj_local_index);
 			}
 		}
-
 	}
 
 	int ret = xml_document->WriteToFile(filename);
@@ -761,8 +760,11 @@ int TriangleComplex::BarycentricSubdivide(unsigned int triangle_local_index) {
 }
 
 int TriangleComplex::StretchedGridMethod(unsigned int iterations, double alpha) {
-	if(basic_stretched_grid_method(iterations, alpha) == false)
+	if(force_stretched_grid_method(iterations, alpha) == false)
 		return false;
+
+	//if(basic_stretched_grid_method(iterations, alpha) == false)
+	//	return false;
 
 	return true;
 }
@@ -2050,7 +2052,7 @@ int TriangleComplex::basic_stretched_grid_method(unsigned int iterations, double
 }
 
 //The force based stretched grid method
-int TriangleComplex::force_stretched_grid_method() {
+int TriangleComplex::force_stretched_grid_method(int iterations, double dt) {
 	//First collect all the edge information
 	vector<Edge*> edge_list;
 	double average_edge_length = 0.0;
@@ -2069,8 +2071,8 @@ int TriangleComplex::force_stretched_grid_method() {
 	vector<Vector2d> vertex_velocity;
 	vector<Vector2d> vertex_force;
 
-	unsigned int iterations = 100;
-	double dt = 0.01;
+	//unsigned int iterations = 100;
+	//double dt = 0.01;
 
 	//Resize some lists
 	use_vertex.resize(global_vertex_list->size(), false);
@@ -2119,6 +2121,22 @@ int TriangleComplex::force_stretched_grid_method() {
 
 		//Calculate the force on each vertex with the edge list
 		for(unsigned int i=0; i<edge_list.size(); i++) {
+			unsigned int v0_index = edge_list[i]->GetVertexIndex(0);
+			unsigned int v1_index = edge_list[i]->GetVertexIndex(1);
+
+			Vector2d* v0 = edge_list[i]->GetVertex(0);
+			Vector2d* v1 = edge_list[i]->GetVertex(1);
+
+			if(v0 == NULL || v1 == NULL)
+				continue;
+
+			double length = edge_list[i]->ComputeLength();
+			Vector2d rhat = (*v1 - *v0).normalize();
+
+			double dl = (length - average_edge_length);
+
+			vertex_force[v0_index] += (rhat * dl);
+			vertex_force[v1_index] -= (rhat * dl);
 		}
 
 		//Update velocity and position

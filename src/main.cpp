@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
 
 	TriangleComplex* tc = triangle_mesher.GetTriangleComplex();
 
-	Prism p;
+	/*Prism p;
 	p.SetMin(atof(argv[2]), atof(argv[3]));
 	p.SetMax(atof(argv[4]), atof(argv[5]));
 
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
 	double avg_edge_length;
 	tc->ComputeEdgeStatisticsInsidePrism(edge_count, avg_edge_length, p);
 	printf("edge count: %u\n", edge_count);
-	printf("average edge length: %f\n", avg_edge_length);
+	printf("average edge length: %f\n", avg_edge_length);*/
 
 	return 0;
 }
