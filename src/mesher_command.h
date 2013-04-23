@@ -56,7 +56,9 @@ public:
 		BASIC_TRIANGLE_MESHER,
 		BASIC_DELAUNAY_FLIPPER,
 
-		STRETCHED_GRID
+		STRETCHED_GRID,
+
+		REFINE_MESH
 	};
 
 	////////////////////////////////
@@ -97,6 +99,9 @@ public:
 	//Stretched Grid options
 	unsigned int stretched_grid_iterations;
 	double stretched_grid_alpha;
+
+	//Refine mesh options
+	double desired_edge_length;
 
 	/////////////////////////////////
 	// Mesher Command Results data //

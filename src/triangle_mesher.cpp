@@ -163,6 +163,9 @@ int TriangleMesher::RunMesherCommand(MesherCommand* mc) {
 	else if(mc->command_type == MesherCommand::STRETCHED_GRID)
 		ret = StretchedGrid(mc->stretched_grid_iterations, mc->stretched_grid_alpha);
 
+	else if(mc->command_type == MesherCommand::REFINE_MESH)
+		ret = RefineMesh(mc->desired_edge_length);
+
 	else if(mc->command_type == MesherCommand::DO_NOTHING)
 		ret = true;
 
@@ -276,6 +279,12 @@ int TriangleMesher::StretchedGrid(unsigned int iterations, double alpha) {
 	return ret;
 }
 
+int TriangleMesher::RefineMesh(double desired_edge_length) {
+	int ret = triangle_complex->AdjustCellEdgeLength(desired_edge_length);
+
+	return ret;
+}
+
 /////////////////////
 // Data management //
 /////////////////////
@@ -283,4 +292,3 @@ int TriangleMesher::StretchedGrid(unsigned int iterations, double alpha) {
 TriangleComplex* TriangleMesher::GetTriangleComplex() {
 	return triangle_complex;
 }
-

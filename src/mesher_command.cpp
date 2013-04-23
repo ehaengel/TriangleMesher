@@ -48,6 +48,9 @@ MesherCommand::MesherCommand() {
 	stretched_grid_iterations = 1;
 	stretched_grid_alpha = 0.01;
 
+	//Refine mesh options
+	desired_edge_length = 0.0;
+
 	/////////////////////////////////
 	// Mesher Command Results data //
 	/////////////////////////////////
@@ -206,6 +209,14 @@ int MesherCommand::LoadFromTagData(XML_Tag* mesh_command_tag) {
 			stretched_grid_alpha = atof(sg_alpha_str.c_str());
 	}
 
+	else if(strcmp(command_type_str.c_str(), "RefineMesh") == 0) {
+		command_type = MesherCommand::REFINE_MESH;
+
+		string desired_edge_length_str = mesh_command_tag->GetAttributeValue("desired_edge_length");
+		if(desired_edge_length_str != "")
+			desired_edge_length = atof(desired_edge_length_str.c_str());
+	}
+
 	else
 		command_type = MesherCommand::DO_NOTHING;
 
@@ -280,6 +291,11 @@ int MesherCommand::print() {
 		printf("Mesher command: Stretched grid\n");
 		printf("Number of iterations: %u\n", stretched_grid_iterations);
 		printf("Alpha value: %f\n", stretched_grid_alpha);
+	}
+
+	else if(command_type == MesherCommand::REFINE_MESH) {
+		printf("Mesher command: Refine mesh\n");
+		printf("Desired edge length: %f\n", desired_edge_length);
 	}
 
 	else {

@@ -83,6 +83,8 @@ public:
 
 	int StretchedGrid(unsigned int iterations, double alpha);
 
+	int RefineMesh(double desired_edge_length);
+
 	/////////////////////
 	// Data management //
 	/////////////////////

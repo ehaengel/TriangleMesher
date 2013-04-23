@@ -769,7 +769,7 @@ int TriangleComplex::StretchedGridMethod(unsigned int iterations, double alpha) 
 	return true;
 }
 
-int TriangleComplex::AdjustCellEdgeLength(double cell_edge_length) {
+int TriangleComplex::AdjustCellEdgeLength(double desired_edge_length) {
 	unsigned int edge_count;
 	double current_cell_edge_length = 0.0;
 
@@ -782,8 +782,8 @@ int TriangleComplex::AdjustCellEdgeLength(double cell_edge_length) {
 		return false;
 
 	//Refine the mesh if it is not dense enough
-	if(current_cell_edge_length > cell_edge_length)
-		if(refine_mesh() == false)
+	if(current_cell_edge_length > desired_edge_length)
+		if(refine_mesh(desired_edge_length) == false)
 			return false;
 
 	//Coarsify the mesh if it is too dense
@@ -2208,7 +2208,16 @@ int TriangleComplex::basic_mesh_cleaner() {
 }
 
 //This function refines a mesh that is not dense enough
-int TriangleComplex::refine_mesh() {
+int TriangleComplex::refine_mesh(double desired_edge_length) {
+	//Get information on the edges we are starting with
+	unsigned int edge_count = 0;
+	double average_edge_length = 0.0;
+	if(ComputeEdgeStatistics(edge_count, average_edge_length) == false)
+		return false;
+
+	//Split up obtuse edges
+	if(split_obtuse_edges(desired_edge_length, edge_count, average_edge_length) == false)
+		return false;
 
 	return true;
 }
@@ -2216,13 +2225,15 @@ int TriangleComplex::refine_mesh() {
 //Splits up edges that are across from an obtuse angle in a triangle
 // + this function stops if the desired cell edge length is achieved,
 //   or if there are no more edges across from obtuse angles to subdivide
-int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, unsigned int& edge_count, double& average_edge_length) {
+int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int& edge_count, double& average_edge_length) {
 	int split_triangle = false;
+	vector<Triangle*> final_new_triangles;
+	vector<unsigned int> final_new_vindices;
 
 	for(unsigned int i=0; i<GetTriangleCount(); i++) {
 		if(split_triangle == true) {
 			split_triangle = false;
-			i--;
+			i = 0;
 		}
 
 		Triangle* tri = GetTriangle(i);
@@ -2242,10 +2253,10 @@ int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, unsigne
 			double edge_length = tri->ComputeEdgeLength(j);
 
 			int split_count = 0;
-			if(desired_cell_edge_length < EFF_ZERO)
+			if(desired_edge_length < EFF_ZERO)
 				split_count = 1;
 			else
-				split_count = min(1, int(ceil(edge_length / desired_cell_edge_length)));
+				split_count = min(1, int(ceil(edge_length / desired_edge_length)));
 
 			vector<Triangle*> new_triangles;
 			vector<unsigned int> new_vindices;
@@ -2274,11 +2285,12 @@ int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, unsigne
 				else
 					DeleteTriangle(i);
 
-				for(unsigned int k=0; k<new_triangles.size(); k++)
-					AppendTriangle(new_triangles[j]);
-
+				//Append the new vertex indices and triangles to the final lists
 				for(unsigned int k=0; k<new_vindices.size(); j++)
-					AppendVertexIndex(new_vindices[k]);
+					final_new_vindices.push_back(new_vindices[k]);
+
+				for(unsigned int k=0; k<new_triangles.size(); k++)
+					final_new_triangles.push_back(new_triangles[k]);
 
 				split_triangle = true;
 
@@ -2287,9 +2299,10 @@ int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, unsigne
 				if(adj_tri != NULL)
 					new_edge_count += split_count;
 
-				double avg_buf1 = average_edge_length * (edge_count / (edge_count + new_edge_count));
-				double avg_buf2 = average_new_edge_length * (new_edge_count / (edge_count + new_edge_count));
+				double avg_buf1 = average_edge_length * (edge_count / (edge_count + new_edge_count - 1));
+				double avg_buf2 = average_new_edge_length * (new_edge_count / (edge_count + new_edge_count - 1));
 				average_edge_length = avg_buf1 + avg_buf2;
+				edge_count += new_edge_count - 1;
 			}
 
 			if(split_triangle == true)
@@ -2297,9 +2310,18 @@ int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, unsigne
 		}
 
 		//Quit if we have refined below the desired cell edge length
-		if(average_edge_length <= desired_cell_edge_length)
+		if(average_edge_length <= desired_edge_length)
 			break;
+
+		if(split_triangle == true && i == GetTriangleCount()-1)
+			i--;
 	}
+
+	for(unsigned int i=0; i<final_new_vindices.size(); i++)
+		AppendVertexIndex(final_new_vindices[i]);
+
+	for(unsigned int i=0; i<final_new_triangles.size(); i++)
+		AppendTriangle(final_new_triangles[i]);
 
 	return true;
 }
