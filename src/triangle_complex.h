@@ -177,11 +177,19 @@ private:
 	//The force based stretched grid method
 	int force_stretched_grid_method(int iterations, double dt);
 
-	//This function cleans up the mesh to remove extra triangles
+	//Cleans up the mesh to remove extra triangles
 	int basic_mesh_cleaner();
 
-	//This function refines a mesh that is not dense enough
+	//Refines a mesh that is not dense enough
 	int refine_mesh();
+
+	//Splits up edges that are across from an obtuse angle in a triangle
+	// + this function stops if the desired cell edge length is achieved,
+	//   or if there are no more edges across from obtuse angles to subdivide
+	int split_obtuse_edges(double desired_cell_edge_length, double& average_edge_length);
+
+	//Barycentric subdivide triangles to achieve a desired edge length
+	int barycentric_subdivion(double desired_cell_edge_length, double& average_edge_length);
 
 	//Initialize the kd-tree prism based on the vertex list
 	int compute_kd_prism();

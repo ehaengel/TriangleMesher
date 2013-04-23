@@ -954,7 +954,7 @@ int Triangle::BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangl
 //Subdivide along an edge
 // + the lambda determine points along the line between the two edge points
 // + if there is an adjacent triangle on the given edge it is also subdivided
-int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vector<Triangle*> &results, vector<unsigned int> &new_vindices) {
+int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vector<Triangle*> &results, vector<unsigned int> &new_vindices, double& average_new_edge_length) {
 	//Clear the results initially
 	results.clear();
 	new_vindices.clear();
@@ -965,10 +965,13 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 
 	Vector2d* v1 = NULL;	
 	Vector2d* v2 = NULL;
+	Vector2d* opv = GetVertex(opposing_vertex);
 
 	unsigned int v1_index = 0;
 	unsigned int v2_index = 0;
 	unsigned int opv_index = GetVertexIndex(opposing_vertex);
+
+	average_new_edge_length = 0.0;
 
 	if(opposing_vertex == 0) {
 		v1 = GetVertex(1);
@@ -991,7 +994,7 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		v1_index = GetVertexIndex(0);
 		v2_index = GetVertexIndex(1);
 	}
-	if(v1 == NULL || v2 == NULL)
+	if(v1 == NULL || v2 == NULL || opv == NULL)
 		return false;
 
 	//Sort the lambda
@@ -1011,6 +1014,8 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		Vector2d* new_vertex = new Vector2d;
 		*new_vertex = ((*v1) * lambda[i]) + ((*v2) * (1 - lambda[i]));
 
+		new_vertices.push_back(new_vertex);
+
 		global_vertex_list->push_back(new_vertex);
 		new_vindices.push_back(global_vertex_list->size()-1);
 	}
@@ -1023,6 +1028,7 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 	new_tri->SetVertex(1, v1_index);
 	new_tri->SetVertex(2, new_vindices[0]);
 	if(new_tri->OrientVertices() == false) return false;
+
 	results.push_back(new_tri);
 
 	new_tri = new Triangle(global_vertex_list);
@@ -1041,14 +1047,33 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		results.push_back(new_tri);
 	}
 
+	//Update the average new edge length
+	int new_edge_count = 0;
+	for(unsigned int i=0; i<new_vertices.size(); i++) {
+		average_new_edge_length += new_vertices[i]->distance(*opv);
+		new_edge_count++;
+	}
+	for(unsigned int i=1; i<new_vertices.size()-1; i++) {
+		average_new_edge_length += new_vertices[i]->distance(*new_vertices[i+1]);
+		new_edge_count++;
+	}
+
+	average_new_edge_length += v1->distance(*new_vertices[0]);
+	average_new_edge_length += new_vertices[new_vertices.size()-1]->distance(*v2);
+	new_edge_count += 2;
+
 	//Generate new triangles from the adjacent triangle
 	Triangle* adj_tri = GetAdjacentTriangle(opposing_vertex);
 	if(adj_tri != NULL) {
 		unsigned int adj_opv_index = 0;
+		Vector2d* adj_opv;
+
 		for(int i=0; i<3; i++) {
 			unsigned int temp = adj_tri->GetVertexIndex(i);
 			if(IsVertex(temp) == false) {
 				adj_opv_index = temp;
+				adj_opv = adj_tri->GetVertex(i);
+
 				break;
 			}
 		}
@@ -1077,10 +1102,61 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 			if(new_tri->OrientVertices() == false) return false;
 			results.push_back(new_tri);
 		}
+
+		for(unsigned int i=0; i<new_vertices.size(); i++) {
+			average_new_edge_length += new_vertices[i]->distance(*opv);
+			new_edge_count++;
+		}
 	}
+
+	average_new_edge_length /= double(new_edge_count);
+	return true;
+}
+
+int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vector<Triangle*> &results, vector<unsigned int> &new_vindices) {
+	double average_new_edge_length = 0.0;
+
+	if(SubdivideAlongEdge(opposing_vertex, lambda, results, new_vindices, average_new_edge_length) == false)
+		return false;
 
 	return true;
 }
+
+//This is the same as above, except that it creates a uniformly spaced list of lambda values for you
+int Triangle::SubdivideAlongEdge(int opposing_vertex, int count, vector<Triangle*> &results, vector<unsigned int> &new_vindices, double& average_new_edge_length) {
+	vector<double> lambda;
+
+	double dl = 1.0 / (count + 1);
+	double lbuf = dl;
+
+	for(int i=0; i<count; i++) {
+		lambda.push_back(lbuf);
+		lbuf += dl;
+	}
+
+	if(SubdivideAlongEdge(opposing_vertex, lambda, results, new_vindices, average_new_edge_length) == false)
+		return false;
+
+	return true;
+}
+
+int Triangle::SubdivideAlongEdge(int opposing_vertex, int count, vector<Triangle*> &results, vector<unsigned int> &new_vindices) {
+	vector<double> lambda;
+
+	double dl = 1.0 / (count + 1);
+	double lbuf = dl;
+
+	for(int i=0; i<count; i++) {
+		lambda.push_back(lbuf);
+		lbuf += dl;
+	}
+
+	if(SubdivideAlongEdge(opposing_vertex, lambda, results, new_vindices) == false)
+		return false;
+
+	return true;
+}
+
 
 //Compute the length of edge
 // + returns 0.0 if the edge is not well defined

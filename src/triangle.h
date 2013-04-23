@@ -114,7 +114,12 @@ public:
 	//Subdivide along an edge
 	// + the lambda determine points along the line between the two edge points
 	// + if there is an adjacent triangle on the given edge it is also subdivided
+	int SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vector<Triangle*> &results, vector<unsigned int> &new_vindices, double& average_new_edge_length);
 	int SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vector<Triangle*> &results, vector<unsigned int> &new_vindices);
+
+	//This is the same as above, except that it creates a uniformly spaced list of lambda values for you
+	int SubdivideAlongEdge(int opposing_vertex, int count, vector<Triangle*> &results, vector<unsigned int> &new_vindices, double& average_new_edge_length);
+	int SubdivideAlongEdge(int opposing_vertex, int count, vector<Triangle*> &results, vector<unsigned int> &new_vindices);
 
 	//Compute the length of edge
 	// + returns 0.0 if the edge is not well defined
