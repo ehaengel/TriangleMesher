@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include <vector>
+#include <algorithm>
 using namespace std;
 
 #include "utility.h"
@@ -103,10 +104,21 @@ public:
 
 	//Subdivide this triangle based on a newly added vertex
 	int SubdivideTriangle(unsigned int vindex, vector<Triangle*> &results);
+	int SubdivideTriangle(unsigned int vindex, vector<Triangle*> &results, double& average_new_edge_length);
 
 	//Barycentric subdivide a triangle
 	// + note that this function adds a new vertex to the global vertex list
 	int BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangle*> &results);
+	int BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangle*> &results, double& average_new_edge_length);
+
+	//Subdivide along an edge
+	// + the lambda determine points along the line between the two edge points
+	// + if there is an adjacent triangle on the given edge it is also subdivided
+	int SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vector<Triangle*> &results, vector<unsigned int> &new_vindices);
+
+	//Compute the length of edge
+	// + returns 0.0 if the edge is not well defined
+	double ComputeEdgeLength(int opposing_vertex);
 
 	/////////////////////////
 	// Debugging functions //

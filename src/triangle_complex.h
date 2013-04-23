@@ -91,6 +91,8 @@ public:
 
 	int StretchedGridMethod(unsigned int iterations, double alpha);
 
+	int AdjustCellEdgeLength(double cell_edge_length);
+
 	/////////////////////////////
 	// Mesh Geometry functions //
 	/////////////////////////////
@@ -177,6 +179,9 @@ private:
 
 	//This function cleans up the mesh to remove extra triangles
 	int basic_mesh_cleaner();
+
+	//This function refines a mesh that is not dense enough
+	int refine_mesh();
 
 	//Initialize the kd-tree prism based on the vertex list
 	int compute_kd_prism();

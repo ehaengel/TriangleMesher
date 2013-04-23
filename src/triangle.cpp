@@ -893,6 +893,18 @@ int Triangle::SubdivideTriangle(unsigned int vindex, vector<Triangle*> &results)
 	return true;
 }
 
+int Triangle::SubdivideTriangle(unsigned int vindex, vector<Triangle*> &results, double& average_new_edge_length) {
+	if(SubdivideTriangle(vindex, results) == false)
+		return false;
+
+	average_new_edge_length = 0.0;
+	average_new_edge_length += results[0]->ComputeEdgeLength(1) / 3.0;
+	average_new_edge_length += results[1]->ComputeEdgeLength(2) / 3.0;
+	average_new_edge_length += results[2]->ComputeEdgeLength(0) / 3.0;
+
+	return true;
+}
+
 //Barycentric subdivide a triangle
 // + note that this function adds a new vertex to the global vertex list
 int Triangle::BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangle*> &results) {
@@ -917,6 +929,183 @@ int Triangle::BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangl
 	return true;
 }
 
+int Triangle::BarycentricSubdivide(unsigned int& centroid_vindex, vector<Triangle*> &results, double& average_new_edge_length) {
+	Vector2d* pt = new Vector2d(0.0, 0.0);
+	if(GetCentroid(*pt) == false) {
+		delete pt;
+		return false;
+	}
+
+	global_vertex_list->push_back(pt);
+	centroid_vindex = global_vertex_list->size()-1;
+
+	//Try to subdivide this triangle at the barycenter
+	if(SubdivideTriangle(centroid_vindex, results, average_new_edge_length) == false) {
+		delete (*global_vertex_list)[centroid_vindex];
+		(*global_vertex_list).erase((*global_vertex_list).begin() + centroid_vindex);
+
+		centroid_vindex = 0;
+		results.clear();
+	}
+
+	return true;
+}
+
+//Subdivide along an edge
+// + the lambda determine points along the line between the two edge points
+// + if there is an adjacent triangle on the given edge it is also subdivided
+int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vector<Triangle*> &results, vector<unsigned int> &new_vindices) {
+	//Clear the results initially
+	results.clear();
+	new_vindices.clear();
+
+	//Safety check
+	if(lambda.size() == 0)
+		return false;
+
+	Vector2d* v1 = NULL;	
+	Vector2d* v2 = NULL;
+
+	unsigned int v1_index = 0;
+	unsigned int v2_index = 0;
+	unsigned int opv_index = GetVertexIndex(opposing_vertex);
+
+	if(opposing_vertex == 0) {
+		v1 = GetVertex(1);
+		v2 = GetVertex(2);
+
+		v1_index = GetVertexIndex(1);
+		v2_index = GetVertexIndex(2);
+	}
+	else if(opposing_vertex == 1) {
+		v1 = GetVertex(2);
+		v2 = GetVertex(0);
+
+		v1_index = GetVertexIndex(2);
+		v2_index = GetVertexIndex(0);
+	}
+	else if(opposing_vertex == 2) {
+		v1 = GetVertex(0);
+		v2 = GetVertex(1);
+
+		v1_index = GetVertexIndex(0);
+		v2_index = GetVertexIndex(1);
+	}
+	if(v1 == NULL || v2 == NULL)
+		return false;
+
+	//Sort the lambda
+	sort(lambda.begin(), lambda.end());
+
+	//Safety check
+	if(lambda[0] <= EFF_ZERO || lambda[lambda.size()-1] >= 1.0 - EFF_ZERO)
+		return false;
+
+	for(unsigned int i=0; i<lambda.size()-1; i++)
+		if(fabs(lambda[i] - lambda[i+1]) < EFF_ZERO)
+			return false;
+
+	//Generate the new points
+	vector<Vector2d*> new_vertices;
+	for(unsigned int i=0; i<lambda.size(); i++) {
+		Vector2d* new_vertex = new Vector2d;
+		*new_vertex = ((*v1) * lambda[i]) + ((*v2) * (1 - lambda[i]));
+
+		global_vertex_list->push_back(new_vertex);
+		new_vindices.push_back(global_vertex_list->size()-1);
+	}
+
+	//Generate the new triangles from this triangle
+	Triangle* new_tri = NULL;
+
+	new_tri = new Triangle(global_vertex_list);
+	new_tri->SetVertex(0, opv_index);
+	new_tri->SetVertex(1, v1_index);
+	new_tri->SetVertex(2, new_vindices[0]);
+	if(new_tri->OrientVertices() == false) return false;
+	results.push_back(new_tri);
+
+	new_tri = new Triangle(global_vertex_list);
+	new_tri->SetVertex(0, opv_index);
+	new_tri->SetVertex(1, new_vindices[new_vindices.size()-1]);
+	new_tri->SetVertex(2, v2_index);
+	if(new_tri->OrientVertices() == false) return false;
+	results.push_back(new_tri);
+
+	for(unsigned int i=1; i<new_vindices.size()-1; i++) {
+		new_tri = new Triangle(global_vertex_list);
+		new_tri->SetVertex(0, opv_index);
+		new_tri->SetVertex(1, new_vindices[i]);
+		new_tri->SetVertex(2, new_vindices[i+1]);
+		if(new_tri->OrientVertices() == false) return false;
+		results.push_back(new_tri);
+	}
+
+	//Generate new triangles from the adjacent triangle
+	Triangle* adj_tri = GetAdjacentTriangle(opposing_vertex);
+	if(adj_tri != NULL) {
+		unsigned int adj_opv_index = 0;
+		for(int i=0; i<3; i++) {
+			unsigned int temp = adj_tri->GetVertexIndex(i);
+			if(IsVertex(temp) == false) {
+				adj_opv_index = temp;
+				break;
+			}
+		}
+		if(adj_opv_index == 0)
+			return false;
+
+		new_tri = new Triangle(global_vertex_list);
+		new_tri->SetVertex(0, adj_opv_index);
+		new_tri->SetVertex(1, new_vindices[0]);
+		new_tri->SetVertex(2, v1_index);
+		if(new_tri->OrientVertices() == false) return false;
+		results.push_back(new_tri);
+
+		new_tri = new Triangle(global_vertex_list);
+		new_tri->SetVertex(0, adj_opv_index);
+		new_tri->SetVertex(1, v2_index);
+		new_tri->SetVertex(2, new_vindices[new_vindices.size()-1]);
+		if(new_tri->OrientVertices() == false) return false;
+		results.push_back(new_tri);
+
+		for(unsigned int i=1; i<new_vindices.size()-1; i++) {
+			new_tri = new Triangle(global_vertex_list);
+			new_tri->SetVertex(0, adj_opv_index);
+			new_tri->SetVertex(1, new_vindices[i+1]);
+			new_tri->SetVertex(2, new_vindices[i]);
+			if(new_tri->OrientVertices() == false) return false;
+			results.push_back(new_tri);
+		}
+	}
+
+	return true;
+}
+
+//Compute the length of edge
+// + returns 0.0 if the edge is not well defined
+double Triangle::ComputeEdgeLength(int opposing_vertex) {
+	Vector2d* v1 = NULL;
+	Vector2d* v2 = NULL;
+
+	if(opposing_vertex == 0) {
+		v1 = GetVertex(1);
+		v2 = GetVertex(2);
+	}
+	else if(opposing_vertex == 1) {
+		v1 = GetVertex(2);
+		v2 = GetVertex(0);
+	}
+	else if(opposing_vertex == 2) {
+		v1 = GetVertex(0);
+		v2 = GetVertex(1);
+	}
+
+	if(v1 == NULL || v2 == NULL)
+		return 0.0;
+
+	return v1->distance(*v2);
+}
 
 /////////////////////////
 // Debugging functions //

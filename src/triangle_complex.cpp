@@ -769,6 +769,31 @@ int TriangleComplex::StretchedGridMethod(unsigned int iterations, double alpha) 
 	return true;
 }
 
+int TriangleComplex::AdjustCellEdgeLength(double cell_edge_length) {
+	unsigned int edge_count;
+	double current_cell_edge_length = 0.0;
+
+	//Compute the current average cell edge length
+	if(ComputeEdgeStatistics(edge_count, current_cell_edge_length) == false)
+		return false;
+
+	//Safety test
+	if(edge_count < 3)
+		return false;
+
+	//Refine the mesh if it is not dense enough
+	if(current_cell_edge_length > cell_edge_length)
+		if(refine_mesh() == false)
+			return false;
+
+	//Coarsify the mesh if it is too dense
+	else {
+		//Do nothing
+	}
+
+	return true;
+}
+
 
 /////////////////////////////
 // Mesh Geometry functions //
@@ -2178,6 +2203,12 @@ int TriangleComplex::basic_mesh_cleaner() {
 	printf("Number of triangles to be deleted: %u\n", triangles_to_delete.size());
 	for(unsigned int i=triangles_to_delete.size(); i>0; i--)
 		DeleteTriangle(triangles_to_delete[i-1]);
+
+	return true;
+}
+
+//This function refines a mesh that is not dense enough
+int TriangleComplex::refine_mesh() {
 
 	return true;
 }
