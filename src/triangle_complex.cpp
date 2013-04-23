@@ -2217,6 +2217,33 @@ int TriangleComplex::refine_mesh() {
 // + this function stops if the desired cell edge length is achieved,
 //   or if there are no more edges across from obtuse angles to subdivide
 int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, double& average_edge_length) {
+	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		Triangle* tri = GetTriangle(i);
+		if(tri == NULL)
+			continue;
+
+		//Look at each edge of the triangle
+		for(int j=0; j<3; j++) {
+			double angle = 0.0;
+			if(tri->GetVertexAngle(j, angle) == false)
+				continue;
+
+			//If this is an obtuse angle then split it
+			if(angle >= PI/2.0) {
+				double edge_length = tri->ComputeEdgeLength(j);
+				int split_count = int(ceil(edge_length / desired_cell_edge_length));
+				if(split_count == 0)
+					split_count = 1;
+
+				vector<Triangle*> new_triangles;
+				vector<unsigned int> new_vindices;
+				double average_new_edge_length = 0.0;
+
+				if(tri->SubdivideAlongEdge(j, split_count, new_triangles, new_vindices, average_new_edge_length) == true) {
+				}
+			}
+		}
+	}
 
 	return true;
 }

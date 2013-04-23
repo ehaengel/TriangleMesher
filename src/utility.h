@@ -13,6 +13,10 @@ using namespace std;
 #define EFF_ZERO 1e-10
 #endif
 
+#ifndef PI
+#define PI 3.14159265358979
+#endif
+
 double get_rand(double r_min, double r_max);
 
 double min(double x, double y);

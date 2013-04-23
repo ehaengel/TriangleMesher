@@ -971,6 +971,9 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 	unsigned int v2_index = 0;
 	unsigned int opv_index = GetVertexIndex(opposing_vertex);
 
+	Triangle* adj_tri_v1 = NULL;
+	Triangle* adj_tri_v2 = NULL;
+
 	average_new_edge_length = 0.0;
 
 	if(opposing_vertex == 0) {
@@ -979,6 +982,9 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 
 		v1_index = GetVertexIndex(1);
 		v2_index = GetVertexIndex(2);
+
+		adj_tri_v1 = GetAdjacentTriangle(1);
+		adj_tri_v2 = GetAdjacentTriangle(2);
 	}
 	else if(opposing_vertex == 1) {
 		v1 = GetVertex(2);
@@ -986,6 +992,9 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 
 		v1_index = GetVertexIndex(2);
 		v2_index = GetVertexIndex(0);
+
+		adj_tri_v1 = GetAdjacentTriangle(2);
+		adj_tri_v2 = GetAdjacentTriangle(0);
 	}
 	else if(opposing_vertex == 2) {
 		v1 = GetVertex(0);
@@ -993,6 +1002,9 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 
 		v1_index = GetVertexIndex(0);
 		v2_index = GetVertexIndex(1);
+
+		adj_tri_v1 = GetAdjacentTriangle(0);
+		adj_tri_v2 = GetAdjacentTriangle(1);
 	}
 	if(v1 == NULL || v2 == NULL || opv == NULL)
 		return false;
@@ -1022,20 +1034,39 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 
 	//Generate the new triangles from this triangle
 	Triangle* new_tri = NULL;
+	Triangle* adj_tri = NULL;
 
 	new_tri = new Triangle(global_vertex_list);
+
 	new_tri->SetVertex(0, opv_index);
 	new_tri->SetVertex(1, v1_index);
 	new_tri->SetVertex(2, new_vindices[0]);
-	if(new_tri->OrientVertices() == false) return false;
-
+	new_tri->SetAdjacentTriangle(2, adj_tri_v2);
+	if(adj_tri_v2 != NULL) {
+		for(int i=0; i<3; i++) {
+			unsigned int vindex = adj_tri_v2->GetVertexIndex(i);
+			if(vindex != v1_index && vindex != opv_index) {
+				adj_tri_v2->SetAdjacentTriangle(i, new_tri);
+				break;
+			}
+		}
+	}
 	results.push_back(new_tri);
 
 	new_tri = new Triangle(global_vertex_list);
 	new_tri->SetVertex(0, opv_index);
 	new_tri->SetVertex(1, new_vindices[new_vindices.size()-1]);
 	new_tri->SetVertex(2, v2_index);
-	if(new_tri->OrientVertices() == false) return false;
+	new_tri->SetAdjacentTriangle(1, adj_tri_v1);
+	if(adj_tri_v1 != NULL) {
+		for(int i=0; i<3; i++) {
+			unsigned int vindex = adj_tri_v1->GetVertexIndex(i);
+			if(vindex != v2_index && vindex != opv_index) {
+				adj_tri_v1->SetAdjacentTriangle(i, new_tri);
+				break;
+			}
+		}
+	}
 	results.push_back(new_tri);
 
 	for(unsigned int i=1; i<new_vindices.size()-1; i++) {
@@ -1043,8 +1074,15 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		new_tri->SetVertex(0, opv_index);
 		new_tri->SetVertex(1, new_vindices[i]);
 		new_tri->SetVertex(2, new_vindices[i+1]);
-		if(new_tri->OrientVertices() == false) return false;
+
 		results.push_back(new_tri);
+	}
+	for(unsigned int i=0; i<lambda.size()+1; i++) {
+		if(i < lambda.size())
+			results[i]->SetAdjacentTriangle(1, results[i+1]);
+
+		if(i > 0)
+			results[i]->SetAdjacentTriangle(2, results[i-1]);
 	}
 
 	//Update the average new edge length
@@ -1063,19 +1101,22 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 	new_edge_count += 2;
 
 	//Generate new triangles from the adjacent triangle
-	Triangle* adj_tri = GetAdjacentTriangle(opposing_vertex);
+	adj_tri = GetAdjacentTriangle(opposing_vertex);
 	if(adj_tri != NULL) {
 		unsigned int adj_opv_index = 0;
 		Vector2d* adj_opv;
 
 		for(int i=0; i<3; i++) {
-			unsigned int temp = adj_tri->GetVertexIndex(i);
-			if(IsVertex(temp) == false) {
-				adj_opv_index = temp;
+			unsigned int vindex = adj_tri->GetVertexIndex(i);
+			if(IsVertex(vindex) == false) {
+				adj_opv_index = vindex;
 				adj_opv = adj_tri->GetVertex(i);
-
-				break;
 			}
+			else if(vindex == v1_index)
+				adj_tri_v1 = adj_tri->GetAdjacentTriangle(i);
+
+			else if(vindex == v2_index)
+				adj_tri_v2 = adj_tri->GetAdjacentTriangle(i);
 		}
 		if(adj_opv_index == 0)
 			return false;
@@ -1084,14 +1125,32 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		new_tri->SetVertex(0, adj_opv_index);
 		new_tri->SetVertex(1, new_vindices[0]);
 		new_tri->SetVertex(2, v1_index);
-		if(new_tri->OrientVertices() == false) return false;
+		new_tri->SetAdjacentTriangle(1, adj_tri_v2);
+		if(adj_tri_v2 != NULL) {
+			for(int i=0; i<3; i++) {
+				unsigned int vindex = adj_tri_v2->GetVertexIndex(i);
+				if(vindex != v1_index && vindex != adj_opv_index) {
+					adj_tri_v2->SetAdjacentTriangle(i, new_tri);
+					break;
+				}
+			}
+		}
 		results.push_back(new_tri);
 
 		new_tri = new Triangle(global_vertex_list);
 		new_tri->SetVertex(0, adj_opv_index);
 		new_tri->SetVertex(1, v2_index);
 		new_tri->SetVertex(2, new_vindices[new_vindices.size()-1]);
-		if(new_tri->OrientVertices() == false) return false;
+		new_tri->SetAdjacentTriangle(2, adj_tri_v1);
+		if(adj_tri_v1 != NULL) {
+			for(int i=0; i<3; i++) {
+				unsigned int vindex = adj_tri_v1->GetVertexIndex(i);
+				if(vindex != v2_index && vindex != adj_opv_index) {
+					adj_tri_v1->SetAdjacentTriangle(i, new_tri);
+					break;
+				}
+			}
+		}
 		results.push_back(new_tri);
 
 		for(unsigned int i=1; i<new_vindices.size()-1; i++) {
@@ -1099,13 +1158,36 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 			new_tri->SetVertex(0, adj_opv_index);
 			new_tri->SetVertex(1, new_vindices[i+1]);
 			new_tri->SetVertex(2, new_vindices[i]);
-			if(new_tri->OrientVertices() == false) return false;
 			results.push_back(new_tri);
+		}
+		for(unsigned int i=lambda.size()+1; i<2*(lambda.size()+1); i++) {
+			if(i < 2*lambda.size()+1)
+				results[i]->SetAdjacentTriangle(1, results[i+1]);
+
+			if(i > lambda.size()+1)
+				results[i]->SetAdjacentTriangle(2, results[i-1]);
+
+			results[i]->SetAdjacentTriangle(0, results[i - (lambda.size()+1)]);
+			results[i - (lambda.size()+1)]->SetAdjacentTriangle(0, results[i]);
 		}
 
 		for(unsigned int i=0; i<new_vertices.size(); i++) {
 			average_new_edge_length += new_vertices[i]->distance(*opv);
 			new_edge_count++;
+		}
+	}
+
+	//Attempt to orient all the final triangles
+	for(unsigned int i=0; i<results.size(); i++) {
+		if(results[i]->OrientVertices() == false) {
+			for(unsigned int j=0; j<results.size(); j++) {
+				delete results[j];
+				results.clear();
+
+				average_new_edge_length = 0.0;
+			}
+
+			return false;
 		}
 	}
 
@@ -1141,6 +1223,10 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, int count, vector<Triangle
 }
 
 int Triangle::SubdivideAlongEdge(int opposing_vertex, int count, vector<Triangle*> &results, vector<unsigned int> &new_vindices) {
+	//Safety check
+	if(count == 0)
+		return false;
+
 	vector<double> lambda;
 
 	double dl = 1.0 / (count + 1);
