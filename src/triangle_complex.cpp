@@ -2216,8 +2216,15 @@ int TriangleComplex::refine_mesh() {
 //Splits up edges that are across from an obtuse angle in a triangle
 // + this function stops if the desired cell edge length is achieved,
 //   or if there are no more edges across from obtuse angles to subdivide
-int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, double& average_edge_length) {
+int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, unsigned int& edge_count, double& average_edge_length) {
+	int split_triangle = false;
+
 	for(unsigned int i=0; i<GetTriangleCount(); i++) {
+		if(split_triangle == true) {
+			split_triangle = false;
+			i--;
+		}
+
 		Triangle* tri = GetTriangle(i);
 		if(tri == NULL)
 			continue;
@@ -2228,21 +2235,70 @@ int TriangleComplex::split_obtuse_edges(double desired_cell_edge_length, double&
 			if(tri->GetVertexAngle(j, angle) == false)
 				continue;
 
-			//If this is an obtuse angle then split it
-			if(angle >= PI/2.0) {
-				double edge_length = tri->ComputeEdgeLength(j);
-				int split_count = int(ceil(edge_length / desired_cell_edge_length));
-				if(split_count == 0)
-					split_count = 1;
+			//If this is an acute/right angle then skip it
+			if(angle <= PI/2.0 + EFF_ZERO)
+				continue;
 
-				vector<Triangle*> new_triangles;
-				vector<unsigned int> new_vindices;
-				double average_new_edge_length = 0.0;
+			double edge_length = tri->ComputeEdgeLength(j);
 
-				if(tri->SubdivideAlongEdge(j, split_count, new_triangles, new_vindices, average_new_edge_length) == true) {
+			int split_count = 0;
+			if(desired_cell_edge_length < EFF_ZERO)
+				split_count = 1;
+			else
+				split_count = min(1, int(ceil(edge_length / desired_cell_edge_length)));
+
+			vector<Triangle*> new_triangles;
+			vector<unsigned int> new_vindices;
+			double average_new_edge_length = 0.0;
+
+			if(tri->SubdivideAlongEdge(j, split_count, new_triangles, new_vindices, average_new_edge_length) == true) {
+				Triangle* adj_tri = tri->GetAdjacentTriangle(j);
+				if(adj_tri != NULL) {
+					unsigned int adj_tindex;
+					for(unsigned int tindex = 0; tindex<GetTriangleCount(); tindex++) {
+						if(GetTriangle(tindex) == adj_tri) {
+							adj_tindex = tindex;
+							break;
+						}
+					}
+
+					if(adj_tindex > i) {
+						DeleteTriangle(adj_tindex);
+						DeleteTriangle(i);
+					}
+					else {
+						DeleteTriangle(i);
+						DeleteTriangle(adj_tindex);
+					}
 				}
+				else
+					DeleteTriangle(i);
+
+				for(unsigned int k=0; k<new_triangles.size(); k++)
+					AppendTriangle(new_triangles[j]);
+
+				for(unsigned int k=0; k<new_vindices.size(); j++)
+					AppendVertexIndex(new_vindices[k]);
+
+				split_triangle = true;
+
+				//Update the average cell edge length
+				int new_edge_count = 2*split_count + 1;
+				if(adj_tri != NULL)
+					new_edge_count += split_count;
+
+				double avg_buf1 = average_edge_length * (edge_count / (edge_count + new_edge_count));
+				double avg_buf2 = average_new_edge_length * (new_edge_count / (edge_count + new_edge_count));
+				average_edge_length = avg_buf1 + avg_buf2;
 			}
+
+			if(split_triangle == true)
+				break;
 		}
+
+		//Quit if we have refined below the desired cell edge length
+		if(average_edge_length <= desired_cell_edge_length)
+			break;
 	}
 
 	return true;

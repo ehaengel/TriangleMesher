@@ -186,7 +186,7 @@ private:
 	//Splits up edges that are across from an obtuse angle in a triangle
 	// + this function stops if the desired cell edge length is achieved,
 	//   or if there are no more edges across from obtuse angles to subdivide
-	int split_obtuse_edges(double desired_cell_edge_length, double& average_edge_length);
+	int split_obtuse_edges(double desired_cell_edge_length, unsigned int& edge_count, double& average_edge_length);
 
 	//Barycentric subdivide triangles to achieve a desired edge length
 	int barycentric_subdivion(double desired_cell_edge_length, double& average_edge_length);
