@@ -2225,6 +2225,8 @@ int TriangleComplex::refine_mesh(double desired_edge_length, unsigned int& edge_
 // + this function stops if the desired cell edge length is achieved,
 //   or if there are no more edges across from obtuse angles to subdivide
 int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int& edge_count, double& average_edge_length) {
+	printf("Starting with edge count: %u; average edge length: %f\n", edge_count, average_edge_length);
+
 	int split_triangle = false;
 	vector<Triangle*> final_new_triangles;
 	vector<unsigned int> final_new_vindices;
@@ -2278,6 +2280,7 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 						}
 					}
 
+					printf("adj_tindex: %u\n", adj_tindex);
 					if(adj_tindex > i) {
 						DeleteTriangle(adj_tindex);
 						DeleteTriangle(i);
@@ -2293,10 +2296,12 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 
 				//Append the new vertex indices and triangles to the final lists
 				for(unsigned int k=0; k<new_vindices.size(); k++)
-					final_new_vindices.push_back(new_vindices[k]);
+					AppendVertexIndex(new_vindices[k]);
+					//final_new_vindices.push_back(new_vindices[k]);
 
 				for(unsigned int k=0; k<new_triangles.size(); k++)
-					final_new_triangles.push_back(new_triangles[k]);
+					AppendTriangle(new_triangles[k]);
+					//final_new_triangles.push_back(new_triangles[k]);
 
 				printf("ASDF\n");
 				split_triangle = true;
@@ -2307,8 +2312,11 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 					new_edge_count += split_count;
 
 				printf("ASDF2\n");
-				double avg_buf1 = average_edge_length * (edge_count / (edge_count + new_edge_count - 1));
-				double avg_buf2 = average_new_edge_length * (new_edge_count / (edge_count + new_edge_count - 1));
+				double avg_buf1 = average_edge_length * (double(edge_count) / double(edge_count + new_edge_count - 1));
+				double avg_buf2 = average_new_edge_length * (double(new_edge_count) / double(edge_count + new_edge_count - 1));
+				printf("average edge length: %f; edge count: %u\n", average_edge_length, edge_count);
+				printf("new edge count: %u; average new edge length: %f\n", new_edge_count, average_new_edge_length);
+				printf("avg_buf1: %f; avg_buf2: %f\n", avg_buf1, avg_buf2);
 				average_edge_length = avg_buf1 + avg_buf2;
 				edge_count += new_edge_count - 1;
 				printf("ASDF3\n");
@@ -2316,7 +2324,7 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 			else
 				return false;
 
-			printf("Subdivision done\n");
+			printf("Subdivision done; edge count: %u; average length: %f\n", edge_count, average_edge_length);
 
 			if(split_triangle == true)
 				break;
@@ -2330,11 +2338,11 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 			i--;
 	}
 
-	for(unsigned int i=0; i<final_new_vindices.size(); i++)
+	/*for(unsigned int i=0; i<final_new_vindices.size(); i++)
 		AppendVertexIndex(final_new_vindices[i]);
 
 	for(unsigned int i=0; i<final_new_triangles.size(); i++)
-		AppendTriangle(final_new_triangles[i]);
+		AppendTriangle(final_new_triangles[i]);*/
 
 	return true;
 }
