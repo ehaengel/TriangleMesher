@@ -181,7 +181,7 @@ private:
 	int basic_mesh_cleaner();
 
 	//Refines a mesh that is not dense enough
-	int refine_mesh(double desired_edge_length);
+	int refine_mesh(double desired_edge_length, unsigned int& edge_count, double& average_edge_length);
 
 	//Splits up edges that are across from an obtuse angle in a triangle
 	// + this function stops if the desired cell edge length is achieved,

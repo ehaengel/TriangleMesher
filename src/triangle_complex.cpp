@@ -773,9 +773,13 @@ int TriangleComplex::AdjustCellEdgeLength(double desired_edge_length) {
 	unsigned int edge_count;
 	double current_cell_edge_length = 0.0;
 
+	printf("RUNNING MESH REFINEMENT %f\n", desired_edge_length);
+
 	//Compute the current average cell edge length
 	if(ComputeEdgeStatistics(edge_count, current_cell_edge_length) == false)
 		return false;
+
+	printf("Current cell edge length: %f\n", current_cell_edge_length);
 
 	//Safety test
 	if(edge_count < 3)
@@ -783,7 +787,7 @@ int TriangleComplex::AdjustCellEdgeLength(double desired_edge_length) {
 
 	//Refine the mesh if it is not dense enough
 	if(current_cell_edge_length > desired_edge_length)
-		if(refine_mesh(desired_edge_length) == false)
+		if(refine_mesh(desired_edge_length, edge_count, current_cell_edge_length) == false)
 			return false;
 
 	//Coarsify the mesh if it is too dense
@@ -791,6 +795,7 @@ int TriangleComplex::AdjustCellEdgeLength(double desired_edge_length) {
 		//Do nothing
 	}
 
+	printf("\n");
 	return true;
 }
 
@@ -2208,13 +2213,7 @@ int TriangleComplex::basic_mesh_cleaner() {
 }
 
 //This function refines a mesh that is not dense enough
-int TriangleComplex::refine_mesh(double desired_edge_length) {
-	//Get information on the edges we are starting with
-	unsigned int edge_count = 0;
-	double average_edge_length = 0.0;
-	if(ComputeEdgeStatistics(edge_count, average_edge_length) == false)
-		return false;
-
+int TriangleComplex::refine_mesh(double desired_edge_length, unsigned int& edge_count, double& average_edge_length) {
 	//Split up obtuse edges
 	if(split_obtuse_edges(desired_edge_length, edge_count, average_edge_length) == false)
 		return false;
@@ -2250,13 +2249,17 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 			if(angle <= PI/2.0 + EFF_ZERO)
 				continue;
 
+			printf("Found obtuse angle\n");
+
 			double edge_length = tri->ComputeEdgeLength(j);
 
 			int split_count = 0;
 			if(desired_edge_length < EFF_ZERO)
 				split_count = 1;
 			else
-				split_count = min(1, int(ceil(edge_length / desired_edge_length)));
+				split_count = max(1, int(ceil(edge_length / desired_edge_length)));
+
+			printf("split count: %d; edge_length: %f; desired edge length: %f\n", split_count, edge_length, desired_edge_length);
 
 			vector<Triangle*> new_triangles;
 			vector<unsigned int> new_vindices;
@@ -2264,6 +2267,8 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 
 			if(tri->SubdivideAlongEdge(j, split_count, new_triangles, new_vindices, average_new_edge_length) == true) {
 				Triangle* adj_tri = tri->GetAdjacentTriangle(j);
+
+				printf("Deleting some old triangles\n");
 				if(adj_tri != NULL) {
 					unsigned int adj_tindex;
 					for(unsigned int tindex = 0; tindex<GetTriangleCount(); tindex++) {
@@ -2284,14 +2289,16 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 				}
 				else
 					DeleteTriangle(i);
+				printf("Deletion successful\n");
 
 				//Append the new vertex indices and triangles to the final lists
-				for(unsigned int k=0; k<new_vindices.size(); j++)
+				for(unsigned int k=0; k<new_vindices.size(); k++)
 					final_new_vindices.push_back(new_vindices[k]);
 
 				for(unsigned int k=0; k<new_triangles.size(); k++)
 					final_new_triangles.push_back(new_triangles[k]);
 
+				printf("ASDF\n");
 				split_triangle = true;
 
 				//Update the average cell edge length
@@ -2299,11 +2306,17 @@ int TriangleComplex::split_obtuse_edges(double desired_edge_length, unsigned int
 				if(adj_tri != NULL)
 					new_edge_count += split_count;
 
+				printf("ASDF2\n");
 				double avg_buf1 = average_edge_length * (edge_count / (edge_count + new_edge_count - 1));
 				double avg_buf2 = average_new_edge_length * (new_edge_count / (edge_count + new_edge_count - 1));
 				average_edge_length = avg_buf1 + avg_buf2;
 				edge_count += new_edge_count - 1;
+				printf("ASDF3\n");
 			}
+			else
+				return false;
+
+			printf("Subdivision done\n");
 
 			if(split_triangle == true)
 				break;

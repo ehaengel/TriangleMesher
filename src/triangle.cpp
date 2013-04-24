@@ -1009,6 +1009,8 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 	if(v1 == NULL || v2 == NULL || opv == NULL)
 		return false;
 
+	printf("v1: %u; v2: %u; opv: %u\n", v1_index, v2_index, opv_index);
+
 	//Sort the lambda
 	sort(lambda.begin(), lambda.end());
 
@@ -1023,8 +1025,10 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 	//Generate the new points
 	vector<Vector2d*> new_vertices;
 	for(unsigned int i=0; i<lambda.size(); i++) {
+		printf("lambda: %f\n", lambda[i]);
+
 		Vector2d* new_vertex = new Vector2d;
-		*new_vertex = ((*v1) * lambda[i]) + ((*v2) * (1 - lambda[i]));
+		*new_vertex = ((*v1) * (1 - lambda[i])) + ((*v2) * lambda[i]);
 
 		new_vertices.push_back(new_vertex);
 
@@ -1032,6 +1036,7 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		new_vindices.push_back(global_vertex_list->size()-1);
 	}
 
+	printf("Generating some new triangles\n");
 	//Generate the new triangles from this triangle
 	Triangle* new_tri = NULL;
 	Triangle* adj_tri = NULL;
@@ -1053,6 +1058,8 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 	}
 	results.push_back(new_tri);
 
+	printf("BLAH1\n");
+
 	new_tri = new Triangle(global_vertex_list);
 	new_tri->SetVertex(0, opv_index);
 	new_tri->SetVertex(1, new_vindices[new_vindices.size()-1]);
@@ -1069,7 +1076,9 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 	}
 	results.push_back(new_tri);
 
-	for(unsigned int i=1; i<new_vindices.size()-1; i++) {
+	printf("BLAH2\n");
+
+	for(unsigned int i=0; i<new_vindices.size()-1; i++) {
 		new_tri = new Triangle(global_vertex_list);
 		new_tri->SetVertex(0, opv_index);
 		new_tri->SetVertex(1, new_vindices[i]);
@@ -1077,6 +1086,9 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 
 		results.push_back(new_tri);
 	}
+
+	printf("Updating adjacencies %u %u\n", results.size(), lambda.size());
+	//Updating adjacencies
 	for(unsigned int i=0; i<lambda.size()+1; i++) {
 		if(i < lambda.size())
 			results[i]->SetAdjacentTriangle(1, results[i+1]);
@@ -1084,6 +1096,8 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		if(i > 0)
 			results[i]->SetAdjacentTriangle(2, results[i-1]);
 	}
+
+	printf("Done updating adjacencies\n");
 
 	//Update the average new edge length
 	int new_edge_count = 0;
@@ -1153,7 +1167,7 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		}
 		results.push_back(new_tri);
 
-		for(unsigned int i=1; i<new_vindices.size()-1; i++) {
+		for(unsigned int i=0; i<new_vindices.size()-1; i++) {
 			new_tri = new Triangle(global_vertex_list);
 			new_tri->SetVertex(0, adj_opv_index);
 			new_tri->SetVertex(1, new_vindices[i+1]);
@@ -1177,6 +1191,16 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		}
 	}
 
+	//Remove all adjacencies from this triangle and adj_tri if it exists
+	if(adj_tri != NULL) {
+		adj_tri->SetAdjacentTriangle(0, NULL);
+		adj_tri->SetAdjacentTriangle(1, NULL);
+		adj_tri->SetAdjacentTriangle(2, NULL);
+	}
+	SetAdjacentTriangle(0, NULL);
+	SetAdjacentTriangle(1, NULL);
+	SetAdjacentTriangle(2, NULL);
+
 	//Attempt to orient all the final triangles
 	for(unsigned int i=0; i<results.size(); i++) {
 		if(results[i]->OrientVertices() == false) {
@@ -1191,6 +1215,7 @@ int Triangle::SubdivideAlongEdge(int opposing_vertex, vector<double> lambda, vec
 		}
 	}
 
+	printf("Subdivision worked fine\n");
 	average_new_edge_length /= double(new_edge_count);
 	return true;
 }
