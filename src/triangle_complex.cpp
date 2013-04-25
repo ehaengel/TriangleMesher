@@ -1,10 +1,8 @@
 #include "triangle_complex.h"
 
 TriangleComplex::TriangleComplex() {
-	//Create the global vertex list from scratch
-	// + The 0th vertex is always a NULL vertex
-	//global_vertex_list = new VertexList;
-	//global_vertex_list->push_back(NULL);
+	//Create the global mesh data
+	global_mesh_data = new GlobalMeshData;
 
 	//Create the global vertex list
 	global_vertex_list = NULL;
@@ -22,12 +20,22 @@ TriangleComplex::TriangleComplex(VertexList* global_vertex_list) {
 	initialize();
 }
 
+TriangleComplex::TriangleComplex(GlobalMeshData* global_mesh_data) {
+	//Get the global mesh data from the function input
+	this->global_mesh_data = global_mesh_data;
+
+	//Initialize all the other variables
+	initialize();
+}
+
 TriangleComplex::~TriangleComplex() {
 	free_data();
 }
 
 //General use functions
 int TriangleComplex::LoadFromFile(const char* filename) {
+	return true;
+
 	//First free up all the old data
 	free_data();
 	initialize();
@@ -66,7 +74,8 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 			}
 
 			unsigned int index = (unsigned int) atoi(index_str.c_str());
-			if(index < global_vertex_list->size()) {
+			//if(index < global_vertex_list->size()) {
+			if(index < global_mesh_data->GetVertexCount()) {
 				Vector2d* pt = GetGlobalVertex(index);
 
 				if(pt != NULL) {
@@ -246,8 +255,8 @@ int TriangleComplex::LoadFromFile(const char* filename) {
 
 int TriangleComplex::WriteToFile(const char* filename) {
 	//Some simple error checking
-	if(global_vertex_list->size() <= 1)
-		return false;
+	//if(global_vertex_list->size() <= 1)
+	//	return false;
 
 	//Open the output file as an xml document
 	XML_Document* xml_document = new XML_Document;
@@ -312,64 +321,42 @@ int TriangleComplex::WriteToFile(const char* filename) {
 
 	delete xml_document;
 	return ret;
-
-	//Open the file for writing
-	/*FILE* handle = fopen(filename, "w");
-	if(!handle)
-		return false;
-
-	//Write the vertex list to a file
-	fprintf(handle, "<vertexlist>\n");
-
-	for(unsigned int i=0; i<global_vertex_list->size(); i++) {
-		//Skip the first vertex, it is always null
-		if(i == 0)
-			continue;
-
-		double x = (*global_vertex_list)[i]->x;
-		double y = (*global_vertex_list)[i]->y;
-
-		fprintf(handle, "\t<vertex index=\"%u\" x=\"%f\" y=\"%f\"/>\n", i, x, y);
-	}
-	fprintf(handle, "</vertexlist>\n\n");
-
-	//Write the triangle list to a file
-	if(WriteToFile(handle) == false) {
-		fclose(handle);
-		return false;
-	}
-
-	//Close up and return
-	fclose(handle);
-	return true;*/
 }
-
-/*int TriangleComplex::WriteToFile(FILE* handle) {
-	if(triangle_list->size() == 0)
-		return true;
-
-	fprintf(handle, "<trianglelist>\n");
-
-	for(unsigned int i=0; i<triangle_list->size(); i++) {
-		unsigned int n1 = (*triangle_list)[i]->GetVertexIndex(0);
-		unsigned int n2 = (*triangle_list)[i]->GetVertexIndex(1);
-		unsigned int n3 = (*triangle_list)[i]->GetVertexIndex(2);
-
-		fprintf(handle, "\t<triangle n1=\"%u\" n2=\"%u\" n3=\"%u\"/>\n", n1, n2, n3);
-	}
-
-	fprintf(handle, "</trianglelist>\n\n");
-
-	return true;
-}*/
 
 //Data management functions
 unsigned int TriangleComplex::GetTriangleCount() {
 	return triangle_list->size();
 }
 
-Triangle* TriangleComplex::GetTriangle(unsigned int tindex) {
-	return (*triangle_list)[tindex];
+unsigned int TriangleComplex::GetTriangleIndex(unsigned int triangle) {
+	if(triangle >= GetTriangleCount())
+		return 0;
+
+	return new_triangle_list[triangle];
+}
+
+Triangle* TriangleComplex::GetTriangle(unsigned int triangle) {
+	if(triangle >= GetTriangleCount())
+		return NULL;
+
+	return (*triangle_list)[triangle];
+}
+
+Triangle* TriangleComplex::GetGlobalTriangle(unsigned int tindex) {
+	return global_mesh_data->GetTriangle(tindex);
+}
+
+int TriangleComplex::SetTriangleIndex(unsigned int triangle, unsigned int tindex) {
+	if(triangle >= GetTriangleCount())
+		return false;
+
+	new_triangle_list[triangle] = tindex;
+	return true;
+}
+
+int TriangleComplex::AppendTriangleIndex(unsigned int tindex) {
+	new_triangle_list.push_back(tindex);
+	return true;
 }
 
 int TriangleComplex::SetTriangle(unsigned int tindex, Triangle* tri) {
@@ -428,8 +415,9 @@ int TriangleComplex::DeleteTriangle(unsigned int tindex) {
 	return true;
 }
 
+//Data management for vertices
 unsigned int TriangleComplex::GetVertexCount() {
-	return vertex_list->size();
+	return vertex_list.size();
 }
 
 unsigned int TriangleComplex::GetVertexIndex(unsigned int vertex) {
@@ -437,7 +425,7 @@ unsigned int TriangleComplex::GetVertexIndex(unsigned int vertex) {
 	if(vertex >= GetVertexCount())
 		return 0;
 
-	return (*vertex_list)[vertex];
+	return vertex_list[vertex];
 }
 
 Vector2d* TriangleComplex::GetVertex(unsigned int vertex) {
@@ -446,15 +434,17 @@ Vector2d* TriangleComplex::GetVertex(unsigned int vertex) {
 		return NULL;
 
 	unsigned int vindex = GetVertexIndex(vertex);
-	return (*global_vertex_list)[vindex];
+	return global_mesh_data->GetVertex(vindex);
+	//return (*global_vertex_list)[vindex];
 }
 
 Vector2d* TriangleComplex::GetGlobalVertex(unsigned int vindex) {
 	//Safety check
-	if(vindex >= global_vertex_list->size())
-		return NULL;
+	//if(vindex >= global_vertex_list->size())
+	//	return NULL;
 
-	return (*global_vertex_list)[vindex];
+	return global_mesh_data->GetVertex(vindex);
+	//return (*global_vertex_list)[vindex];
 }
 
 int TriangleComplex::SetVertexIndex(unsigned int vertex, unsigned int vindex) {
@@ -462,12 +452,12 @@ int TriangleComplex::SetVertexIndex(unsigned int vertex, unsigned int vindex) {
 	if(vertex >= GetVertexCount())
 		return false;
 
-	(*vertex_list)[vertex] = vindex;
+	vertex_list[vertex] = vindex;
 	return true;
 }
 
 int TriangleComplex::AppendVertexIndex(unsigned int vindex) {
-	vertex_list->push_back(vindex);
+	vertex_list.push_back(vindex);
 
 	return true;
 }
@@ -479,11 +469,13 @@ int TriangleComplex::GenerateRandomGrid(double xmin, double xmax, double ymin, d
 		return false;
 
 	for(unsigned int i=0; i<vertex_count; i++) {
-		Vector2d* new_vector = new Vector2d;
-		new_vector->set(get_rand(xmin, xmax), get_rand(ymin, ymax));
+		Vector2d* new_vertex = new Vector2d;
+		new_vertex->set(get_rand(xmin, xmax), get_rand(ymin, ymax));
 
-		global_vertex_list->push_back(new_vector);
-		AppendVertexIndex(global_vertex_list->size()-1);
+		unsigned int vindex = global_mesh_data->AppendVertex(new_vertex);
+		AppendVertexIndex(vindex);
+		//global_vertex_list->push_back(new_vector);
+		//AppendVertexIndex(global_vertex_list->size()-1);
 	}
 
 	return true;
@@ -509,10 +501,12 @@ int TriangleComplex::GenerateUniformGrid(double xmin, double xmax, double ymin, 
 		xbuf = xmin;
 
 		for(unsigned int j=0; j<xcount; j++) {
-			Vector2d* new_vector = new Vector2d(xbuf, ybuf);
+			Vector2d* new_vertex = new Vector2d(xbuf, ybuf);
 
-			global_vertex_list->push_back(new_vector);
-			AppendVertexIndex(global_vertex_list->size()-1);
+			unsigned int vindex = global_mesh_data->AppendVertex(new_vertex);
+			AppendVertexIndex(vindex);
+			//global_vertex_list->push_back(new_vector);
+			//AppendVertexIndex(global_vertex_list->size()-1);
 
 			xbuf += dx;
 		}
@@ -540,11 +534,13 @@ int TriangleComplex::GenerateHexGrid(double xmin, double xmax, double ymin, doub
 		for(int j=-int(xcount); j<int(xcount); j++) {
 			Vector2d temp = start + (u*i) + (v*j);
 			if(temp.x >= xmin && temp.x <= xmax && temp.y >= ymin && temp.y <= ymax) {
-				Vector2d* new_vector = new Vector2d;
-				*new_vector = temp;
+				Vector2d* new_vertex = new Vector2d;
+				*new_vertex = temp;
 
-				global_vertex_list->push_back(new_vector);
-				AppendVertexIndex(global_vertex_list->size()-1);
+				unsigned int vindex = global_mesh_data->AppendVertex(new_vertex);
+				AppendVertexIndex(vindex);
+				//global_vertex_list->push_back(new_vector);
+				//AppendVertexIndex(global_vertex_list->size()-1);
 			}
 		}
 	}
@@ -569,7 +565,8 @@ int TriangleComplex::SetIncompleteListsComputed(int incomplete_lists_computed) {
 //Meshing functions
 int TriangleComplex::RunTriangleMesher() {
 	//If this is the kd_parent
-	if(kd_parent == NULL && global_vertex_list->size() >= MAXIMUM_MESH_SIZE) {
+	//if(kd_parent == NULL && global_vertex_list->size() >= MAXIMUM_MESH_SIZE) {
+	if(kd_parent == NULL && GetVertexCount() >= MAXIMUM_MESH_SIZE) {
 		//Keep track of the number of runs
 		char filename[1000];
 		int run_count = 0;
@@ -1016,8 +1013,10 @@ int TriangleComplex::CreateKDTree() {
 	printf("splitting index: %u\n", splitting_index);
 
 	//Create two children complices
-	kd_child[0] = new TriangleComplex(global_vertex_list);
-	kd_child[1] = new TriangleComplex(global_vertex_list);
+	//kd_child[0] = new TriangleComplex(global_vertex_list);
+	//kd_child[1] = new TriangleComplex(global_vertex_list);
+	kd_child[0] = new TriangleComplex(global_mesh_data);
+	kd_child[1] = new TriangleComplex(global_mesh_data);
 
 	//Divide up the vertices
 	for(unsigned int i=0; i<GetVertexCount(); i++) {
@@ -1282,8 +1281,8 @@ int TriangleComplex::IsBridgeTriangleIndex(unsigned int local_index) {
 //Debugging functions
 int TriangleComplex::write_svg(const char* filename, double w, double h) {
 	//Simple error check
-	if(global_vertex_list->size() <= 1)
-		return false;
+	//if(global_vertex_list->size() <= 1)
+	//	return false;
 
 	//Open the file for writing
 	FILE* handle = fopen(filename, "w");
@@ -1313,49 +1312,21 @@ int TriangleComplex::write_svg(FILE* handle, double w, double h, int draw_verts)
 
 	//Write the vertices
 	if(draw_verts == true) {
-		for(unsigned int i=0; i<global_vertex_list->size(); i++) {
-			//Skip the first vertex, it is null
-			if(i == 0)
+		for(unsigned int i=0; i<global_mesh_data->GetVertexCount(); i++) {
+		//for(unsigned int i=0; i<global_vertex_list->size(); i++) {
+			Vector2d* pt = global_mesh_data->GetVertex(i);
+			if(pt == NULL)
 				continue;
 
-			double cx = (*global_vertex_list)[i]->x;
-			double cy = (*global_vertex_list)[i]->y;
+			//double cx = (*global_vertex_list)[i]->x;
+			//double cy = (*global_vertex_list)[i]->y;
+			double cx = pt->x;
+			double cy = pt->y;
 			double r = 1.0;
 
 			fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"blue\"/>\n", cx, h-cy, r);
 		}
 	}
-
-	//Write the incomplete edges
-	/*for(unsigned int i=0; i<incomplete_edges.size(); i++) {
-		TriangleEdge te = incomplete_edges[i];
-
-		Vector2d* p0 = GetGlobalVertex(te.vertices[0]);
-		Vector2d* p1 = GetGlobalVertex(te.vertices[1]);
-
-		if(p0 == NULL || p1 == NULL)
-			continue;
-
-		fprintf(handle, "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" ", p0->x, h-p0->y, p1->x, h-p1->y);
-		fprintf(handle, "stroke=\"purple\" stroke-width=\"3\"/>\n");
-	}
-
-	//Write the incomplete vertices
-	for(unsigned int i=0; i<incomplete_vertices.size(); i++) {
-		//Skip the first vertex, it is null
-		if(i == 0)
-			continue;
-
-		Vector2d* pt = GetGlobalVertex(incomplete_vertices[i]);
-		if(pt == NULL)
-			continue;
-
-		double cx = pt->x;
-		double cy = pt->y;
-		double r = 3.0;
-
-		fprintf(handle, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"red\"/>\n", cx, h-cy, r);
-	}*/
 
 	//Write the kd-tree prism
 	if(kd_prism != NULL)
@@ -1368,23 +1339,24 @@ int TriangleComplex::write_svg(FILE* handle, double w, double h, int draw_verts)
 	return true;
 }
 
-int TriangleComplex::generate_random_vertex_list(int num, double xmin, double xmax) {
+/*int TriangleComplex::generate_random_vertex_list(int num, double xmin, double xmax) {
 	for(int i=0; i<num; i++) {
-		Vector2d* new_vector = new Vector2d;
-		new_vector->set(get_rand(xmin, xmax), get_rand(xmin, xmax));
+		Vector2d* new_vertex = new Vector2d;
+		new_vertex->set(get_rand(xmin, xmax), get_rand(xmin, xmax));
 
-		global_vertex_list->push_back(new_vector);
-		AppendVertexIndex(i+1);
+		unsigned int vindex = global_mesh_data->AppendVertex(new_vertex);
+		AppendVertexIndex(vindex);
+		//global_vertex_list->push_back(new_vector);
+		//AppendVertexIndex(i+1);
 	}
 
 	return true;
-}
-
+}*/
 
 //Internal use functions
 int TriangleComplex::initialize() {
-	vertex_list = new vector<unsigned int>;
-	vertex_list->clear();
+	vertex_list.clear();
+	new_triangle_list.clear();
 
 	triangle_list = new TriangleList;
 	triangle_list->clear();
@@ -1412,10 +1384,12 @@ int TriangleComplex::initialize() {
 }
 
 int TriangleComplex::free_data() {
-	//Delete the vertex list
-	vertex_list->clear();
-	delete vertex_list;
-	vertex_list = NULL;
+	//Clear the vertex list
+	vertex_list.clear();
+
+	//Clear the triangle list
+	new_triangle_list.clear();
+
 
 	//Delete the triangle list
 	/*if(triangle_list) {
@@ -1496,7 +1470,8 @@ int TriangleComplex::basic_triangle_mesher() {
 		done = true;
 
 		//Search through the list of all the incomplete edges and try to make a new triangle
-		Triangle* new_tri = new Triangle(global_vertex_list);
+		//Triangle* new_tri = new Triangle(global_vertex_list);
+		Triangle* new_tri = new Triangle(global_mesh_data->GetGlobalVertexList());
 		int found_good_triangle = false;
 
 		for(unsigned int i=0; i<GetTriangleCount(); i++) {
@@ -1648,6 +1623,7 @@ int TriangleComplex::basic_triangle_mesher() {
 	time_t end_time = clock();
 	printf("Time spent in basic triangle mesher = %fs\n", double(end_time - start_time) / double(CLOCKS_PER_SEC));
 
+	printf("Triangle count: %u\n", GetTriangleCount());
 	return true;
 }
 
@@ -1692,7 +1668,8 @@ int TriangleComplex::create_seed_triangle() {
 			return false;
 
 		//Create a triangle
-		Triangle* tri = new Triangle(global_vertex_list);
+		//Triangle* tri = new Triangle(global_vertex_list);
+		Triangle* tri = new Triangle(global_mesh_data->GetGlobalVertexList());
 
 		tri->SetVertex(0, GetVertexIndex(0));
 		tri->SetVertex(1, GetVertexIndex(1));
@@ -1766,7 +1743,7 @@ int TriangleComplex::compute_incomplete_vertices() {
 	//incomplete_vertices_adjacent_triangles.clear();
 
 	//All vertices are considered incomplete for now
-	incomplete_vertices = *vertex_list;
+	incomplete_vertices = vertex_list;
 	incomplete_vertices_angles.resize(GetVertexCount());
 
 	//incomplete_vertices_adjacent_triangles.resize(GetVertexCount());

@@ -32,6 +32,7 @@ class TriangleComplex {
 public:
 	TriangleComplex();
 	TriangleComplex(VertexList* global_vertex_list);
+	TriangleComplex(GlobalMeshData* global_mesh_data);
 
 	~TriangleComplex();
 
@@ -41,7 +42,6 @@ public:
 
 	int LoadFromFile(const char* filename);
 	int WriteToFile(const char* filename);
-	//int WriteToFile(FILE* handle);
 
 	///////////////////////////////
 	// Data management functions //
@@ -49,7 +49,13 @@ public:
 
 	//Data management for triangles
 	unsigned int GetTriangleCount();
-	Triangle* GetTriangle(unsigned int tindex);
+	unsigned int GetTriangleIndex(unsigned int triangle);
+
+	Triangle* GetTriangle(unsigned int triangle);
+	Triangle* GetGlobalTriangle(unsigned int tindex);
+
+	int SetTriangleIndex(unsigned int triangle, unsigned int tindex);
+	int AppendTriangleIndex(unsigned int tindex);
 
 	int SetTriangle(unsigned int tindex, Triangle* tri);
 	unsigned int AppendTriangle(Triangle* tri);
@@ -59,7 +65,7 @@ public:
 
 	int DeleteTriangle(unsigned int tindex);
 
-	//Data management for local/global vertices
+	//Data management for vertices
 	unsigned int GetVertexCount();
 	unsigned int GetVertexIndex(unsigned int vertex);
 
@@ -210,15 +216,18 @@ private:
 	// Global mesh data //
 	//////////////////////
 
-	VertexList* global_vertex_list;
+	VertexList* global_vertex_list; //OLD
+	GlobalMeshData* global_mesh_data;
 
 	////////////////////////
-	// Internal mesh data //
+	// Local mesh data //
 	////////////////////////
 
-	//The overall mesh structure
-	vector<unsigned int>* vertex_list;
-	TriangleList* triangle_list;
+	//The local mesh structure
+	vector<unsigned int> vertex_list;
+	vector<unsigned int> new_triangle_list;
+
+	TriangleList* triangle_list; //OLD
 
 	//These are used for constructing a mesh
 	vector<unsigned int> incomplete_vertices;

@@ -12,9 +12,6 @@ using namespace std;
 #ifndef TRIANGLE
 #define TRIANGLE
 
-//Prototype this class
-class TriangleEdge;
-
 //Returns true if the segments v1-v2 and w1-w2 overlap
 int TestLineSegmentOverlap(Vector2d v1, Vector2d v2, Vector2d w1, Vector2d w2);
 

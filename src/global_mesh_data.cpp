@@ -31,7 +31,17 @@ int GlobalMeshData::LoadFromFile(const char* filename) {
 	return true;
 }
 
+int GlobalMeshData::LoadFromFile(XML_Document* xml_document) {
+
+	return true;
+}
+
 int GlobalMeshData::SaveToFile(const char* filename) {
+
+	return true;
+}
+
+int GlobalMeshData::SaveToFile(XML_Document* xml_document) {
 
 	return true;
 }
@@ -65,6 +75,10 @@ unsigned int GlobalMeshData::AppendVertex(Vector2d* vertex) {
 	return (global_vertex_list.size()-1);
 }
 
+VertexList* GlobalMeshData::GetGlobalVertexList() {
+	return &global_vertex_list;
+}
+
 //Triangles
 unsigned int GlobalMeshData::GetTriangleCount() {
 	return global_triangle_list.size();
@@ -88,4 +102,8 @@ int GlobalMeshData::SetTriangle(unsigned int index, Triangle* tri) {
 unsigned int GlobalMeshData::AppendTriangle(Triangle* tri) {
 	global_triangle_list.push_back(tri);
 	return (global_triangle_list.size()-1);
+}
+
+TriangleList* GlobalMeshData::GetGlobalTriangleList() {
+	return &global_triangle_list;
 }
