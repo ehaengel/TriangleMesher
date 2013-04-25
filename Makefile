@@ -11,6 +11,8 @@ all_objects:
 	g++ src/edge.cpp -c -o edge.o $(CFLAGS)
 	g++ src/geometry.cpp -c -o geometry.o $(CFLAGS)
 
+	g++ src/global_mesh_data.cpp -c -o global_mesh_data.o $(CFLAGS)
+
 	g++ -fopenmp src/triangle_complex.cpp -c -o triangle_complex.o $(CFLAGS)
 
 	g++ -fopenmp src/mesher_command.cpp -c -o mesher_command.o $(CFLAGS)

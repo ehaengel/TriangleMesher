@@ -16,6 +16,9 @@ using namespace std;
 #include "triangle_complex.h"
 #include "mesher_command.h"
 
+//Mesh data code
+#include "global_mesh_data.h"
+
 #ifndef TRIANGLE_MESHER
 #define TRIANGLE_MESHER
 

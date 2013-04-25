@@ -18,6 +18,9 @@ using namespace std;
 #include "edge.h"
 #include "geometry.h"
 
+//Mesh data code
+#include "global_mesh_data.h"
+
 #include <omp.h>
 
 #ifndef TRIANGLE_COMPLEX
