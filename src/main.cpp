@@ -8,9 +8,18 @@ int main(int argc, char** argv) {
 	//Seed random
 	srand(time(0));
 
+	char filename[1000];
+	if(argc >= 2)
+		sprintf(filename, "%s", argv[1]);
+
+	else {
+		printf("Mesher command file: ");
+		int ret = scanf("%s", filename);
+	}
+
 	TriangleMesher triangle_mesher;
-	if(triangle_mesher.LoadCommandsFromFile(argv[1]) == false) {
-		printf("Error loading file\n");
+	if(triangle_mesher.LoadCommandsFromFile(filename) == false) {
+		printf("Error loading file %s\n", filename);
 		return false;
 	}
 
@@ -20,16 +29,6 @@ int main(int argc, char** argv) {
 	triangle_mesher.RunMesherCommands();
 
 	TriangleComplex* tc = triangle_mesher.GetTriangleComplex();
-
-	/*Prism p;
-	p.SetMin(atof(argv[2]), atof(argv[3]));
-	p.SetMax(atof(argv[4]), atof(argv[5]));
-
-	unsigned int edge_count;
-	double avg_edge_length;
-	tc->ComputeEdgeStatisticsInsidePrism(edge_count, avg_edge_length, p);
-	printf("edge count: %u\n", edge_count);
-	printf("average edge length: %f\n", avg_edge_length);*/
 
 	return 0;
 }

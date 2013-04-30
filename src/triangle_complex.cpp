@@ -1599,7 +1599,11 @@ int TriangleComplex::basic_triangle_mesher() {
 
 		//Add the newly found triangle to the triangle list
 		if(found_good_triangle) {
-			unsigned int tindex = AppendTriangle(new_tri);
+			unsigned int tindex = 0;
+			#pragma omp critical
+			{
+				tindex = AppendTriangle(new_tri);
+			}
 
 			//Update triangle adjacencies
 			for(unsigned int i=0; i<GetTriangleCount(); i++) {
