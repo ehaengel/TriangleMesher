@@ -52,6 +52,10 @@ public:
 	int GetOpposingEdge(Edge* &e, int opposing_vertex);
 	int GetEdges(Edge* &e1, Edge* &e2, Edge* &e3);
 
+	//Triangle index
+	unsigned int GetTriangleIndex();
+	int SetTriangleIndex(unsigned int triangle_index);
+
 	//Local index
 	unsigned int GetLocalIndex();
 	int SetLocalIndex(unsigned int local_index);
@@ -144,29 +148,14 @@ private:
 	Vector2d* circumcenter;
 	double circumradius;
 
+	//This is the location in the global triangle list of this triangle
+	unsigned int triangle_index;
+
 	//This is used to give each triangle a unique identifier
 	static unsigned int global_triangle_count;
 	unsigned int local_index;
 };
 
 typedef vector<Triangle*> TriangleList;
-
-/*class TriangleEdge {
-public:
-	TriangleEdge();
-	TriangleEdge(Triangle* tri, int opposing_vertex);
-	~TriangleEdge();
-
-	int operator==(TriangleEdge te);
-
-	TriangleEdge operator=(TriangleEdge te);
-
-	//The definition of the edge
-	Triangle* tri;
-	int opposing_vertex;
-
-	//The vertices of the edge in question
-	unsigned int vertices[2];
-};*/
 
 #endif

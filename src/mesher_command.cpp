@@ -26,6 +26,7 @@ MesherCommand::MesherCommand() {
 
 	//Load/Save Mesh From/To File options
 	strcpy(filename, "");
+	load_save_triangles = true;
 
 	//Write SVG options
 	strcpy(svg_filename, "");
@@ -145,18 +146,24 @@ int MesherCommand::LoadFromTagData(XML_Tag* mesh_command_tag) {
 		command_type = MesherCommand::LOAD_MESH_FROM_FILE;
 
 		string filename_str = mesh_command_tag->GetAttributeValue("filename");
-
 		if(filename_str != "")
 			strncpy(filename, filename_str.c_str(), 1000);
+
+		string load_save_triangles_str = mesh_command_tag->GetAttributeValue("load_triangles");
+		if(strcmp(load_save_triangles_str.c_str(), "false") == 0)
+			load_save_triangles = false;
 	}
 
 	else if(strcmp(command_type_str.c_str(), "SaveMeshToFile") == 0) {
 		command_type = MesherCommand::SAVE_MESH_TO_FILE;
 
 		string filename_str = mesh_command_tag->GetAttributeValue("filename");
-
 		if(filename_str != "")
 			strncpy(filename, filename_str.c_str(), 1000);
+
+		string load_save_triangles_str = mesh_command_tag->GetAttributeValue("save_triangles");
+		if(strcmp(load_save_triangles_str.c_str(), "false") == 0)
+			load_save_triangles = false;
 	}
 
 	else if(strcmp(command_type_str.c_str(), "WriteSVG") == 0) {
@@ -259,11 +266,13 @@ int MesherCommand::print() {
 	else if(command_type == MesherCommand::LOAD_MESH_FROM_FILE) {
 		printf("Mesher command: Load mesh from file\n");
 		printf("filename: %s\n", filename);
+		printf("load triangles: %d\n", load_save_triangles);
 	}
 
 	else if(command_type == MesherCommand::SAVE_MESH_TO_FILE) {
 		printf("Mesher command: Save mesh to file\n");
 		printf("filename: %s\n", filename);
+		printf("save triangles: %d\n", load_save_triangles);
 	}
 
 	else if(command_type == MesherCommand::WRITE_SVG) {

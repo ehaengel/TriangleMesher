@@ -6,8 +6,9 @@ TriangleMesher::TriangleMesher() {
 
 	mesher_command_fail_behaviour = TriangleMesher::QUIT_ON_FAILURE;
 
-	//The triangle complex this mesher operates on
-	triangle_complex = new TriangleComplex;
+	//The mesh and a complex for the mesher to operate on
+	global_mesh_data = new GlobalMeshData;
+	triangle_complex = new TriangleComplex(global_mesh_data);
 }
 
 TriangleMesher::~TriangleMesher() {
@@ -114,7 +115,10 @@ int TriangleMesher::RunMesherCommands() {
 		MesherCommand* mc = GetMesherCommand(i);
 
 		if(mc != NULL) {
-			printf("Running command %u\n", i);
+			printf("\nRunning command %u\n", i);
+			mc->print();
+			printf("\n");
+
 			int ret = RunMesherCommand(mc);
 
 			if(ret == false && mesher_command_fail_behaviour == TriangleMesher::QUIT_ON_FAILURE)
@@ -143,10 +147,10 @@ int TriangleMesher::RunMesherCommand(MesherCommand* mc) {
 		ret = RunTriangleMesher(mc->use_kd_tree);
 
 	else if(mc->command_type == MesherCommand::LOAD_MESH_FROM_FILE)
-		ret = LoadMeshFromFile(mc->filename);
+		ret = LoadMeshFromFile(mc->filename, mc->load_save_triangles);
 
 	else if(mc->command_type == MesherCommand::SAVE_MESH_TO_FILE)
-		ret = SaveMeshToFile(mc->filename);
+		ret = SaveMeshToFile(mc->filename, mc->load_save_triangles);
 
 	else if(mc->command_type == MesherCommand::WRITE_SVG)
 		ret = WriteSVG(mc->svg_filename, mc->svg_width, mc->svg_height);
@@ -233,20 +237,26 @@ int TriangleMesher::RunTriangleMesher(int UseKdTree) {
 	return ret;
 }
 
-int TriangleMesher::LoadMeshFromFile(const char* filename) {
-	int ret = triangle_complex->LoadFromFile(filename);
+int TriangleMesher::LoadMeshFromFile(const char* filename, int load_triangles) {
+	if(global_mesh_data->LoadFromFile(filename, load_triangles) == false)
+		return false;
 
-	return ret;
+	if(triangle_complex->AppendAllGlobalMeshData() == false)
+		return false;
+
+	return true;
 }
 
-int TriangleMesher::SaveMeshToFile(const char* filename) {
-	int ret = triangle_complex->WriteToFile(filename);
+int TriangleMesher::SaveMeshToFile(const char* filename, int save_triangles) {
+	int ret = global_mesh_data->SaveToFile(filename, save_triangles);
 
 	return ret;
 }
 
 int TriangleMesher::WriteSVG(const char* filename, double svg_width, double svg_height) {
-	int ret = triangle_complex->write_svg(filename, svg_width, svg_height);
+	int ret = global_mesh_data->WriteSVG(filename, svg_width, svg_height);
+
+	return ret;
 }
 
 int TriangleMesher::AppendVertex(Vector2d vertex) {
@@ -255,6 +265,8 @@ int TriangleMesher::AppendVertex(Vector2d vertex) {
 
 int TriangleMesher::SubdivideTriangle(unsigned int vindex, unsigned int triangle_local_index) {
 	int ret = triangle_complex->SubdivideTriangle(vindex, triangle_local_index);
+
+	return ret;
 }
 
 int TriangleMesher::BarycentricSubdivide(unsigned int triangle_local_index) {

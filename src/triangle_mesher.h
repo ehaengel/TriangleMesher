@@ -71,8 +71,8 @@ public:
 
 	int RunTriangleMesher(int UseKdTree);
 
-	int LoadMeshFromFile(const char* filename);
-	int SaveMeshToFile(const char* filename);
+	int LoadMeshFromFile(const char* filename, int load_triangles);
+	int SaveMeshToFile(const char* filename, int save_triangles);
 
 	int WriteSVG(const char* filename, double svg_width, double svg_height);
 
@@ -100,7 +100,8 @@ private:
 
 	int mesher_command_fail_behaviour;
 
-	//The triangle complex this mesher operates on
+	//The mesh and a complex for the mesher to operate on
+	GlobalMeshData* global_mesh_data;
 	TriangleComplex* triangle_complex;
 };
 

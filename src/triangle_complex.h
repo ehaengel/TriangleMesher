@@ -31,7 +31,7 @@ using namespace std;
 class TriangleComplex {
 public:
 	TriangleComplex();
-	TriangleComplex(VertexList* global_vertex_list);
+	//TriangleComplex(VertexList* global_vertex_list);
 	TriangleComplex(GlobalMeshData* global_mesh_data);
 
 	~TriangleComplex();
@@ -40,12 +40,17 @@ public:
 	// General use i/o functions //
 	///////////////////////////////
 
-	int LoadFromFile(const char* filename);
-	int WriteToFile(const char* filename);
+	//int LoadFromFile(const char* filename);
+	//int WriteToFile(const char* filename);
 
 	///////////////////////////////
 	// Data management functions //
 	///////////////////////////////
+
+	//Data management for the global mesh
+	GlobalMeshData* GetGlobalMeshData();
+
+	int AppendAllGlobalMeshData();
 
 	//Data management for triangles
 	unsigned int GetTriangleCount();
@@ -57,10 +62,12 @@ public:
 	int SetTriangleIndex(unsigned int triangle, unsigned int tindex);
 	int AppendTriangleIndex(unsigned int tindex);
 
+	int AppendAllTriangleIndices();
+
 	int SetTriangle(unsigned int tindex, Triangle* tri);
 	unsigned int AppendTriangle(Triangle* tri);
 
-	int RemoveTriangle(unsigned int tindex);
+	int RemoveTriangle(unsigned int triangle);
 	int RemoveAllTriangles();
 
 	int DeleteTriangle(unsigned int tindex);
@@ -74,6 +81,11 @@ public:
 
 	int SetVertexIndex(unsigned int vertex, unsigned int vindex);
 	int AppendVertexIndex(unsigned int vindex);
+
+	int AppendAllVertexIndices();
+
+	int RemoveVertex(unsigned int vertex);
+	int RemoveAllVertices();
 
 	//Generate some regular/random vertex sets
 	int GenerateRandomGrid(double xmin, double xmax, double ymin, double ymax, unsigned int vertex_count);
@@ -146,6 +158,8 @@ public:
 
 	TriangleComplex* GetKDParent();
 
+	int IsKDLeafNode();
+
 	int AppendBridgeTriangleIndex(unsigned int local_index);
 	int IsBridgeTriangleIndex(unsigned int local_index);
 
@@ -153,10 +167,10 @@ public:
 	// Debugging functions //
 	/////////////////////////
 
-	int write_svg(const char* filename, double w, double h);
-	int write_svg(FILE* handle, double w, double h, int draw_verts);
+	//int write_svg(const char* filename, double w, double h);
+	//int write_svg(FILE* handle, double w, double h, int draw_verts);
 
-	int generate_random_vertex_list(int num, double xmin, double xmax);
+	//int generate_random_vertex_list(int num, double xmin, double xmax);
 
 private:
 	////////////////////////////
@@ -166,8 +180,6 @@ private:
 	//Memory management
 	int initialize();
 	int free_data();
-
-	int reset_global_vertex_list();
 
 	//The most basic triangle mesher
 	int basic_triangle_mesher();
@@ -216,7 +228,7 @@ private:
 	// Global mesh data //
 	//////////////////////
 
-	VertexList* global_vertex_list; //OLD
+	//VertexList* global_vertex_list; //OLD
 	GlobalMeshData* global_mesh_data;
 
 	////////////////////////
@@ -225,9 +237,7 @@ private:
 
 	//The local mesh structure
 	vector<unsigned int> vertex_list;
-	vector<unsigned int> new_triangle_list;
-
-	TriangleList* triangle_list; //OLD
+	vector<unsigned int> triangle_list;
 
 	//These are used for constructing a mesh
 	vector<unsigned int> incomplete_vertices;

@@ -78,6 +78,7 @@ public:
 
 	//Load/Save Mesh From/To File options
 	char filename[1000];
+	int load_save_triangles;
 
 	//Write SVG options
 	char svg_filename[1000];

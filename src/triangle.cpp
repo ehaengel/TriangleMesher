@@ -66,6 +66,8 @@ Triangle::Triangle(VertexList* global_vertex_list) {
 	circumcenter = NULL;
 	circumradius = 0.0;
 
+	triangle_index = 0;
+
 	//Establish the local index
 	global_triangle_count++;
 	local_index = global_triangle_count;
@@ -325,6 +327,16 @@ int Triangle::GetEdges(Edge* &e1, Edge* &e2, Edge* &e3) {
 	GetOpposingEdge(e2, 1);
 	GetOpposingEdge(e3, 2);
 
+	return true;
+}
+
+//Triangle index
+unsigned int Triangle::GetTriangleIndex() {
+	return triangle_index;
+}
+
+int Triangle::SetTriangleIndex(unsigned int triangle_index) {
+	this->triangle_index = triangle_index;
 	return true;
 }
 
